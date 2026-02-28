@@ -1,24 +1,27 @@
 fx_version 'cerulean'
 game 'gta5'
 
-description 'ESX Online Time'
+author 'Tayer Ruze (https://github.com/uucz)'
+description 'ESX Online Time Tracker — Track, leaderboard, admin tools & Discord integration'
+version '1.1.0'
 
-version '1.0.0'
-
-shared_script '@es_extended/imports.lua'
+shared_scripts {
+    'config.lua',
+    'shared/locale.lua',
+    'locales/*.lua',
+}
 
 server_scripts {
     '@oxmysql/lib/MySQL.lua',
-    '@es_extended/locale.lua',
+    'server/discord.lua',
     'server.lua',
 }
 
 client_scripts {
-    '@es_extended/locale.lua',
     'client.lua',
 }
 
-dependency { 
+dependencies {
     'es_extended',
     'oxmysql',
 }
