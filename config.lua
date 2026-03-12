@@ -10,8 +10,11 @@ Config.UpdateInterval = 60000
 Config.Commands = {
     onlinetime = 'onlinetime',   -- Player checks own online time
     toptime    = 'toptime',      -- View online time leaderboard
-    admintime  = 'admintime',   -- Admin checks a player's online time
-    resettime  = 'resettime',   -- Admin resets a player's online time
+    admintime  = 'admintime',    -- Admin checks a player's online time
+    resettime  = 'resettime',    -- Admin resets a player's online time
+    dailytime  = 'dailytime',    -- View today's online time
+    weeklytime = 'weeklytime',   -- View this week's online time
+    rewards    = 'rewards',      -- View milestone rewards progress
 }
 
 -- Leaderboard settings
@@ -23,6 +26,32 @@ Config.Leaderboard = {
 Config.AdminGroups = {
     'admin',
     'superadmin',
+}
+
+-- AFK Detection settings
+Config.AFK = {
+    enabled       = true,
+    timeout       = 300,    -- Seconds of no movement before marking as AFK (default: 5 minutes)
+    checkInterval = 10000,  -- Client check interval in ms (default: 10 seconds)
+    minDistance    = 5.0,    -- Minimum distance (meters) to move within checkInterval to count as active
+    kickEnabled   = false,  -- Kick player after extended AFK (optional)
+    kickTimeout   = 1800,   -- Seconds before AFK kick (default: 30 minutes, only if kickEnabled)
+}
+
+-- Milestone Rewards settings
+Config.Rewards = {
+    enabled = true,
+    milestones = {
+        -- { hours = required_hours, money = reward_amount, label = display_name }
+        { hours = 1,    money = 5000,   label = '1h'    },
+        { hours = 5,    money = 15000,  label = '5h'    },
+        { hours = 10,   money = 30000,  label = '10h'   },
+        { hours = 24,   money = 50000,  label = '24h'   },
+        { hours = 48,   money = 80000,  label = '48h'   },
+        { hours = 100,  money = 150000, label = '100h'  },
+        { hours = 200,  money = 300000, label = '200h'  },
+        { hours = 500,  money = 500000, label = '500h'  },
+    },
 }
 
 -- Discord Webhook settings

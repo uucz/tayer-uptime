@@ -54,3 +54,17 @@ function SendDisconnectNotification(playerName, sessionTime, totalTime)
     )
     SendToDiscord(title, message, 15158332) -- Red
 end
+
+--- Send a milestone reward notification to Discord
+--- @param playerName string The player's name
+--- @param milestone string The milestone label (e.g., "100h")
+--- @param reward number The reward amount
+function SendMilestoneNotification(playerName, milestone, reward)
+    local title = _L('discord_milestone')
+    local message = ('**%s:** %s\n**%s:** %s\n**%s:** $%s'):format(
+        _L('discord_player'), playerName,
+        _L('discord_milestone_reached'), milestone,
+        _L('discord_milestone_reward'), tostring(reward)
+    )
+    SendToDiscord(title, message, 16766720) -- Gold
+end

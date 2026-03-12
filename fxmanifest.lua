@@ -2,8 +2,8 @@ fx_version 'cerulean'
 game 'gta5'
 
 author 'Tayer Ruze (https://github.com/uucz)'
-description 'ESX Online Time Tracker — Track, leaderboard, admin tools & Discord integration'
-version '1.1.0'
+description 'ESX Online Time Tracker — Track, leaderboard, AFK detection, milestone rewards, daily stats & Discord integration'
+version '2.0.0'
 
 shared_scripts {
     'config.lua',
