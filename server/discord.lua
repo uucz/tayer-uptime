@@ -20,7 +20,11 @@ function SendToDiscord(title, message, color)
         }
     }
 
-    PerformHttpRequest(Config.Discord.webhookUrl, function(err, text, headers) end, 'POST',
+    PerformHttpRequest(Config.Discord.webhookUrl, function(err, text, headers)
+        if err ~= 200 and err ~= 204 then
+            print(('[tayer-uptime] ^1Discord webhook error: HTTP %s^0'):format(tostring(err)))
+        end
+    end, 'POST',
         json.encode({
             username = Config.Discord.botName,
             embeds   = embed,

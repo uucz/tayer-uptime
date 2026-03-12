@@ -3,8 +3,9 @@ ESX = exports["es_extended"]:getSharedObject()
 -- Initialize locale
 _SetLocale(Config.Locale)
 
--- Session tracking table: stores connect time per player source
+-- Session tracking: stores connect time and last update time per player source
 local PlayerSessions = {}
+local PlayerLastUpdate = {}
 
 ---------------------------------------------------------------------------
 -- Database Initialization
@@ -136,16 +137,10 @@ RegisterCommand(Config.Commands.resettime, function(source, args)
         MySQL.Async.execute(
             'UPDATE users_online_time SET online_time = 0 WHERE identifier = @identifier',
             { ['@identifier'] = xTarget.identifier },
-            function(rowsChanged)
-                if rowsChanged > 0 then
-                    TriggerClientEvent('chat:addMessage', source, {
-                        args = { 'SYSTEM', _L('admin_reset_success', xTarget.getName(), targetId) }
-                    })
-                else
-                    TriggerClientEvent('chat:addMessage', source, {
-                        args = { 'SYSTEM', _L('admin_reset_fail') }
-                    })
-                end
+            function()
+                TriggerClientEvent('chat:addMessage', source, {
+                    args = { 'SYSTEM', _L('admin_reset_success', xTarget.getName(), targetId) }
+                })
             end
         )
     else
@@ -165,20 +160,10 @@ Citizen.CreateThread(function()
                 local identifier = xPlayer.identifier
                 local name       = xPlayer.getName() or 'Unknown'
 
+                PlayerLastUpdate[tonumber(playerId)] = os.time()
                 MySQL.Async.execute(
-                    'UPDATE users_online_time SET online_time = online_time + 1, name = @name WHERE identifier = @identifier',
-                    { ['@identifier'] = identifier, ['@name'] = name },
-                    function(rowsChanged)
-                        if rowsChanged == 0 then
-                            MySQL.Async.execute(
-                                'INSERT INTO users_online_time (identifier, name, online_time) VALUES (@identifier, @name, @online_time)',
-                                { ['@identifier'] = identifier, ['@name'] = name, ['@online_time'] = 1 },
-                                function()
-                                    print(_L('db_new_user', identifier))
-                                end
-                            )
-                        end
-                    end
+                    'INSERT INTO users_online_time (identifier, name, online_time) VALUES (@identifier, @name, 1) ON DUPLICATE KEY UPDATE online_time = online_time + 1, name = @name',
+                    { ['@identifier'] = identifier, ['@name'] = name }
                 )
             end
         end
@@ -188,6 +173,19 @@ end)
 ---------------------------------------------------------------------------
 -- Player Connect / Disconnect Events (Session Tracking + Discord)
 ---------------------------------------------------------------------------
+-- Initialize sessions for players already online (handles resource restart)
+AddEventHandler('onResourceStart', function(resourceName)
+    if GetCurrentResourceName() ~= resourceName then return end
+    local currentTime = os.time()
+    for _, playerId in ipairs(GetPlayers()) do
+        local src = tonumber(playerId)
+        if src then
+            PlayerSessions[src] = currentTime
+            PlayerLastUpdate[src] = currentTime
+        end
+    end
+end)
+
 AddEventHandler('playerConnecting', function(name, setKickReason, deferrals)
     local src = source
     PlayerSessions[src] = os.time()
@@ -206,16 +204,44 @@ AddEventHandler('playerDropped', function(reason)
         PlayerSessions[src] = nil
     end
 
+    -- Save unsaved minutes since last tracking loop tick
+    local unsavedMinutes = 0
+    if PlayerLastUpdate[src] then
+        unsavedMinutes = math.floor((os.time() - PlayerLastUpdate[src]) / 60)
+        PlayerLastUpdate[src] = nil
+    elseif sessionMinutes > 0 then
+        -- Player connected but tracking loop never ran for them
+        unsavedMinutes = sessionMinutes
+    end
+
     -- Fetch total time and send Discord notification
     if xPlayer then
-        MySQL.Async.fetchAll(
-            'SELECT online_time FROM users_online_time WHERE identifier = @identifier',
-            { ['@identifier'] = xPlayer.identifier },
-            function(result)
-                local totalTime = (result[1] and result[1].online_time) or 0
-                SendDisconnectNotification(name, FormatTime(sessionMinutes), FormatTime(totalTime))
-            end
-        )
+        local identifier = xPlayer.identifier
+        if unsavedMinutes > 0 then
+            MySQL.Async.execute(
+                'INSERT INTO users_online_time (identifier, name, online_time) VALUES (@identifier, @name, @time) ON DUPLICATE KEY UPDATE online_time = online_time + @time, name = @name',
+                { ['@identifier'] = identifier, ['@name'] = name, ['@time'] = unsavedMinutes },
+                function()
+                    MySQL.Async.fetchAll(
+                        'SELECT online_time FROM users_online_time WHERE identifier = @identifier',
+                        { ['@identifier'] = identifier },
+                        function(result)
+                            local totalTime = (result[1] and result[1].online_time) or 0
+                            SendDisconnectNotification(name, FormatTime(sessionMinutes), FormatTime(totalTime))
+                        end
+                    )
+                end
+            )
+        else
+            MySQL.Async.fetchAll(
+                'SELECT online_time FROM users_online_time WHERE identifier = @identifier',
+                { ['@identifier'] = identifier },
+                function(result)
+                    local totalTime = (result[1] and result[1].online_time) or 0
+                    SendDisconnectNotification(name, FormatTime(sessionMinutes), FormatTime(totalTime))
+                end
+            )
+        end
     else
         SendDisconnectNotification(name, FormatTime(sessionMinutes), _L('no_data'))
     end
