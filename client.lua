@@ -174,3 +174,25 @@ RegisterCommand(Config.Commands.loginreward, function()
         TriggerEvent('chat:addMessage', { args = { '', _L('login_footer') } })
     end)
 end, false)
+
+---------------------------------------------------------------------------
+-- Command: Open NUI Dashboard
+---------------------------------------------------------------------------
+RegisterCommand(Config.Commands.uptime, function()
+    ESX.TriggerServerCallback('tayer-uptime:getDashboardData', function(data)
+        if not data then return end
+        SetNuiFocus(true, true)
+        SendNUIMessage({
+            action = 'openDashboard',
+            data   = data,
+        })
+    end)
+end, false)
+
+---------------------------------------------------------------------------
+-- NUI Callback: Close Dashboard
+---------------------------------------------------------------------------
+RegisterNUICallback('closeDashboard', function(data, cb)
+    SetNuiFocus(false, false)
+    cb('ok')
+end)

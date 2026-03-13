@@ -17,6 +17,7 @@ Config.Commands = {
     monthlytime = 'monthlytime',   -- View this month's online time
     rewards     = 'rewards',       -- View milestone rewards progress
     loginreward = 'loginreward',   -- View daily login reward status
+    uptime      = 'uptime',        -- Open NUI dashboard panel
 }
 
 -- Leaderboard settings
@@ -90,10 +91,18 @@ Config.Maintenance = {
     cleanupTime    = '04:00',   -- Time to run cleanup (HH:MM, server time)
 }
 
+-- First-Join Welcome Bonus
+Config.FirstJoin = {
+    enabled    = true,
+    bonusMoney = 5000,  -- Welcome bonus for first-time players
+}
+
 -- Discord Webhook settings
 Config.Discord = {
-    enabled    = false,
-    webhookUrl = '',  -- Your Discord webhook URL
-    botName    = 'Tayer Uptime',
-    color      = 3066993,  -- Green embed color (decimal)
+    enabled     = false,
+    webhookUrl  = '',  -- Your Discord webhook URL
+    botName     = 'Tayer Uptime',
+    color       = 3066993,  -- Green embed color (decimal)
+    dailyReport = false,    -- Send daily server stats report to Discord
+    reportTime  = '00:00',  -- Time to send daily report (HH:MM, server time)
 }

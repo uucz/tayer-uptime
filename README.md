@@ -13,17 +13,20 @@ A feature-rich **FiveM ESX** resource for player online time tracking with serve
 ## Features
 
 - **Automatic Time Tracking** — Records each player's online time every minute
+- **NUI Dashboard** — Beautiful in-game panel (`/uptime`) with Overview, Leaderboard, Milestones, and Login Streak tabs
 - **Server-Side AFK Detection** — Fully server-authoritative position tracking, no client trust
 - **AFK Kick** — Optional auto-kick after extended AFK period
 - **Milestone Rewards** — Configurable playtime milestones with automatic money rewards
 - **Daily Login Rewards** — Streak-based login rewards with grace period and 7-day cycles
+- **First-Join Welcome** — Configurable welcome bonus for new players
 - **Playtime-Gated Roles** — Auto-assign ESX groups based on total playtime
 - **Daily/Weekly/Monthly Stats** — Track and view time breakdowns by period
 - **Session History** — Full session recording with connect/disconnect times and reasons
 - **Leaderboard** — View top players ranked by online time
-- **Admin Commands** — Check or reset any player's online time with audit logging
+- **Admin Commands** — Check, reset, set, or add time for any player with audit logging
 - **Multi-Language** — Built-in support for zh-CN, en, es, fr, de, pt-BR
-- **Discord Webhooks** — Notifications for connect, disconnect, milestones, login rewards, role promotions, AFK kicks, admin actions
+- **Discord Webhooks** — Notifications for connect, disconnect, milestones, login rewards, role promotions, AFK kicks, admin actions, first-join, daily reports
+- **Discord Daily Report** — Automated daily server stats summary at configurable time
 - **Exports API** — 7 exports for other resources to query playtime data
 - **Data Maintenance** — Auto-cleanup of old daily records
 - **Crash-Safe** — Saves unsaved time on disconnect; handles resource restarts
@@ -107,8 +110,12 @@ Config.Maintenance = {
 | `/monthlytime` | Check this month's online time | Everyone |
 | `/rewards` | View milestone rewards progress | Everyone |
 | `/loginreward` | View daily login reward status | Everyone |
+| `/uptime` | Open NUI dashboard panel | Everyone |
 | `/admintime [id]` | Check a specific player's online time | Admin |
 | `/resettime [id]` | Reset a player's online time (audited) | Admin |
+| `/settime [id] [min]` | Set a player's online time (audited) | Admin |
+| `/addtime [id] [min]` | Add time to a player (audited) | Admin |
+| `/serverstats` | View server-wide statistics | Admin |
 
 ## Exports API
 
@@ -159,7 +166,7 @@ local info = exports['tayer-uptime']:GetLoginStreak(source)
 ```
 tayer-uptime/
 ├── config.lua              # Configuration
-├── client.lua              # Client-side commands & AFK display
+├── client.lua              # Client-side commands, AFK display, NUI control
 ├── server.lua              # Server-side logic, AFK detection, rewards, roles
 ├── fxmanifest.lua          # Resource manifest
 ├── shared/
@@ -173,6 +180,10 @@ tayer-uptime/
 │   └── pt-BR.lua           # Portuguese (Brazil)
 ├── server/
 │   └── discord.lua         # Discord webhook module
+├── ui/
+│   ├── index.html          # NUI dashboard HTML
+│   ├── style.css           # NUI dashboard styles
+│   └── script.js           # NUI dashboard logic
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
 └── LICENSE
@@ -195,17 +206,20 @@ This project is licensed under the [MIT License](LICENSE).
 ## 功能特点
 
 - **自动时长追踪** — 每分钟自动记录在线时间
+- **NUI 面板** — 精美游戏内面板 (`/uptime`)，含概览、排行榜、里程碑、登录连续四个标签页
 - **服务端 AFK 检测** — 完全服务端权威位置追踪，无客户端信任
 - **AFK 踢出** — 可选长时间 AFK 自动踢出
 - **里程碑奖励** — 可配置时长里程碑自动发放金钱
 - **每日登录奖励** — 连续登录奖励，支持宽限期和 7 天循环
+- **新玩家欢迎** — 可配置首次加入奖励金
 - **时长门控角色** — 根据总时长自动分配 ESX 权限组
 - **每日/每周/每月统计** — 分时段查看在线时长
 - **会话历史** — 完整记录每次连接/断开时间和原因
 - **排行榜** — 在线时长排名
-- **管理员命令** — 查看/重置时长，带审计日志
+- **管理员命令** — 查看/重置/设置/增加时长，带审计日志
 - **多语言** — 支持 zh-CN、en、es、fr、de、pt-BR
-- **Discord Webhook** — 上线、下线、里程碑、登录奖励、角色晋升、AFK 踢出、管理操作通知
+- **Discord Webhook** — 上线、下线、里程碑、登录奖励、角色晋升、AFK 踢出、管理操作、新玩家、每日报告通知
+- **Discord 每日报告** — 可配置时间自动发送服务器每日统计摘要
 - **Exports API** — 7 个接口供其他脚本查询
 - **数据维护** — 自动清理过期每日记录
 - **防崩溃** — 断线时保存未记录时间，支持资源重启
@@ -221,8 +235,12 @@ This project is licensed under the [MIT License](LICENSE).
 | `/monthlytime` | 查看本月在线时长 | 所有玩家 |
 | `/rewards` | 查看里程碑奖励进度 | 所有玩家 |
 | `/loginreward` | 查看每日登录状态 | 所有玩家 |
+| `/uptime` | 打开 NUI 统计面板 | 所有玩家 |
 | `/admintime [ID]` | 查看指定玩家时长 | 管理员 |
 | `/resettime [ID]` | 重置指定玩家时长 (有审计) | 管理员 |
+| `/settime [ID] [分钟]` | 设置指定玩家时长 (有审计) | 管理员 |
+| `/addtime [ID] [分钟]` | 增加指定玩家时长 (有审计) | 管理员 |
+| `/serverstats` | 查看服务器总体统计 | 管理员 |
 
 ## Exports API
 

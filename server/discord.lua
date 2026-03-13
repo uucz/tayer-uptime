@@ -105,6 +105,32 @@ function SendAFKKickNotification(playerName)
     SendToDiscord(title, message, 15105570) -- Orange
 end
 
+--- Send a first-join welcome notification to Discord
+--- @param playerName string The player's name
+function SendFirstJoinNotification(playerName)
+    local title = _L('discord_first_join')
+    local message = ('**%s:** %s'):format(_L('discord_player'), playerName)
+    SendToDiscord(title, message, 5763719) -- Green
+end
+
+--- Send a daily report notification to Discord
+--- @param date string The report date
+--- @param players number Number of active players
+--- @param totalTime string Formatted total playtime
+--- @param newPlayers number Number of new players
+--- @param topList string Formatted top players list
+function SendDailyReportNotification(date, players, totalTime, newPlayers, topList)
+    local title = _L('discord_daily_report')
+    local message = ('**%s:** %s\n**%s:** %d\n**%s:** %s\n**%s:** %d\n\n**%s:**\n%s'):format(
+        _L('discord_report_date'), date,
+        _L('discord_report_players'), players,
+        _L('discord_report_total_time'), totalTime,
+        _L('discord_report_new_players'), newPlayers,
+        _L('discord_report_top_players'), topList
+    )
+    SendToDiscord(title, message, 3447003) -- Blue
+end
+
 --- Send an admin audit notification to Discord
 --- @param adminName string The admin's name
 --- @param action string The action performed

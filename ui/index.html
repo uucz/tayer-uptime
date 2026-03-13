@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tayer Uptime</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app" class="hidden">
+        <div class="panel">
+            <div class="panel-header">
+                <h1 class="panel-title">UPTIME</h1>
+                <button class="close-btn" onclick="closePanel()">&times;</button>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" data-tab="overview">Overview</button>
+                <button class="tab" data-tab="leaderboard">Leaderboard</button>
+                <button class="tab" data-tab="milestones">Milestones</button>
+                <button class="tab" data-tab="streak">Login Streak</button>
+            </div>
+
+            <!-- Overview Tab -->
+            <div class="tab-content active" id="tab-overview">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Time</div>
+                        <div class="stat-value" id="stat-total">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Today</div>
+                        <div class="stat-value" id="stat-daily">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">This Week</div>
+                        <div class="stat-value" id="stat-weekly">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">This Month</div>
+                        <div class="stat-value" id="stat-monthly">--</div>
+                    </div>
+                </div>
+
+                <div class="stat-card session-card">
+                    <div class="stat-label">Current Session</div>
+                    <div class="stat-value" id="stat-session">--</div>
+                    <div class="afk-status" id="afk-status"></div>
+                </div>
+
+                <div class="stat-card rank-card">
+                    <div class="stat-label">Your Rank</div>
+                    <div class="stat-value rank-value" id="stat-rank">#--</div>
+                </div>
+            </div>
+
+            <!-- Leaderboard Tab -->
+            <div class="tab-content" id="tab-leaderboard">
+                <div class="leaderboard" id="leaderboard-list">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+
+            <!-- Milestones Tab -->
+            <div class="tab-content" id="tab-milestones">
+                <div class="milestone-header">
+                    <span>Your Time: </span>
+                    <span id="milestone-time">--</span>
+                </div>
+                <div class="milestones-list" id="milestones-list">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+
+            <!-- Login Streak Tab -->
+            <div class="tab-content" id="tab-streak">
+                <div class="streak-display">
+                    <div class="streak-flame" id="streak-flame">🔥</div>
+                    <div class="streak-count" id="streak-count">0</div>
+                    <div class="streak-label">Day Streak</div>
+                </div>
+                <div class="stats-grid streak-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Best Streak</div>
+                        <div class="stat-value" id="streak-max">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Logins</div>
+                        <div class="stat-value" id="streak-total">0</div>
+                    </div>
+                </div>
+                <div class="streak-status" id="streak-status"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

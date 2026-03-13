@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-03-13
+
+### Added
+- **NUI Dashboard** — Full in-game HTML/CSS/JS panel with `/uptime` command, featuring 4 tabs: Overview, Leaderboard, Milestones, and Login Streak
+- **Dark Glassmorphism UI** — Modern translucent panel design with backdrop blur, smooth animations, and responsive layout
+- **Admin `/settime` Command** — Set a player's online time to a specific value with audit logging
+- **Admin `/addtime` Command** — Add minutes to a player's online time with audit logging
+- **Admin `/serverstats` Command** — View server-wide statistics (online count, daily/weekly active, total players, total playtime)
+- **First-Join Welcome System** — Configurable welcome bonus money for new players with Discord notification
+- **Discord Daily Report** — Automated daily server stats report (active players, total playtime, new players, top 5) at configurable time
+- **Real-Time AFK Status** — Dashboard shows live AFK status, synced from server-side detection
+
+### Changed
+- Added `Config.Commands.uptime` for NUI dashboard command
+- Added `Config.FirstJoin` settings (enabled, bonusMoney)
+- Added `Config.Discord.dailyReport` and `Config.Discord.reportTime` settings
+- Updated all 6 locale files with new keys for admin commands, server stats, first join, and Discord reports
+- ProcessFirstJoin now wired into `esx:playerLoaded` handler
+
 ## [2.1.0] - 2026-03-13
 
 ### Added

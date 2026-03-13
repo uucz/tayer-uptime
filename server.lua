@@ -588,6 +588,132 @@ ESX.RegisterServerCallback('tayer-uptime:getLoginStatus', function(source, cb)
 end)
 
 ---------------------------------------------------------------------------
+-- Server Callback: Get full dashboard data (for NUI)
+---------------------------------------------------------------------------
+ESX.RegisterServerCallback('tayer-uptime:getDashboardData', function(source, cb)
+    local xPlayer = ESX.GetPlayerFromId(source)
+    if not xPlayer then cb(nil) return end
+
+    local identifier = xPlayer.identifier
+    local playerName = xPlayer.getName() or 'Unknown'
+    local today = os.date('%Y-%m-%d')
+    local yearMonth = os.date('%Y-%m')
+
+    -- Session time
+    local sessionTime = 0
+    if PlayerSessions[source] then
+        sessionTime = math.floor((os.time() - PlayerSessions[source]) / 60)
+    end
+
+    -- Gather all data in parallel via nested callbacks
+    MySQL.Async.fetchAll(
+        'SELECT online_time FROM users_online_time WHERE identifier = @identifier',
+        { ['@identifier'] = identifier },
+        function(totalResult)
+            local totalTime = (totalResult[1] and totalResult[1].online_time) or 0
+
+            MySQL.Async.fetchAll(
+                'SELECT online_time FROM users_online_daily WHERE identifier = @identifier AND date = CURDATE()',
+                { ['@identifier'] = identifier },
+                function(dailyResult)
+                    local dailyTime = (dailyResult[1] and dailyResult[1].online_time) or 0
+
+                    MySQL.Async.fetchAll(
+                        'SELECT COALESCE(SUM(online_time), 0) as total FROM users_online_daily WHERE identifier = @identifier AND date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)',
+                        { ['@identifier'] = identifier },
+                        function(weeklyResult)
+                            local weeklyTime = (weeklyResult[1] and weeklyResult[1].total) or 0
+
+                            MySQL.Async.fetchAll(
+                                'SELECT online_time FROM users_online_monthly WHERE identifier = @identifier AND year_month = @ym',
+                                { ['@identifier'] = identifier, ['@ym'] = yearMonth },
+                                function(monthlyResult)
+                                    local monthlyTime = (monthlyResult[1] and monthlyResult[1].online_time) or 0
+
+                                    -- Get rank
+                                    MySQL.Async.fetchAll(
+                                        'SELECT COUNT(*) as rank FROM users_online_time WHERE online_time > @time',
+                                        { ['@time'] = totalTime },
+                                        function(rankResult)
+                                            local rank = (rankResult[1] and rankResult[1].rank or 0) + 1
+
+                                            -- Get leaderboard
+                                            MySQL.Async.fetchAll(
+                                                'SELECT name, online_time FROM users_online_time ORDER BY online_time DESC LIMIT @limit',
+                                                { ['@limit'] = Config.Leaderboard.maxEntries },
+                                                function(lbResult)
+
+                                                    -- Get milestones
+                                                    MySQL.Async.fetchAll(
+                                                        'SELECT milestone_hours FROM users_online_rewards WHERE identifier = @identifier',
+                                                        { ['@identifier'] = identifier },
+                                                        function(rewardResult)
+                                                            local claimedSet = {}
+                                                            for _, row in ipairs(rewardResult) do
+                                                                claimedSet[row.milestone_hours] = true
+                                                            end
+
+                                                            local milestones = {}
+                                                            for _, ms in ipairs(Config.Rewards.milestones) do
+                                                                milestones[#milestones + 1] = {
+                                                                    hours   = ms.hours,
+                                                                    money   = ms.money,
+                                                                    label   = ms.label,
+                                                                    claimed = claimedSet[ms.hours] == true,
+                                                                }
+                                                            end
+
+                                                            -- Get login streak
+                                                            MySQL.Async.fetchAll(
+                                                                'SELECT * FROM users_login_streaks WHERE identifier = @identifier',
+                                                                { ['@identifier'] = identifier },
+                                                                function(streakResult)
+                                                                    local loginStreak = {
+                                                                        currentStreak = 0,
+                                                                        maxStreak     = 0,
+                                                                        totalLogins   = 0,
+                                                                        claimedToday  = false,
+                                                                    }
+                                                                    if streakResult[1] then
+                                                                        local row = streakResult[1]
+                                                                        loginStreak.currentStreak = row.current_streak
+                                                                        loginStreak.maxStreak     = row.max_streak
+                                                                        loginStreak.totalLogins   = row.total_logins
+                                                                        loginStreak.claimedToday  = (row.last_claimed_date == today)
+                                                                    end
+
+                                                                    cb({
+                                                                        playerName  = playerName,
+                                                                        totalTime   = totalTime,
+                                                                        dailyTime   = dailyTime,
+                                                                        weeklyTime  = weeklyTime,
+                                                                        monthlyTime = monthlyTime,
+                                                                        sessionTime = sessionTime,
+                                                                        rank        = rank,
+                                                                        isAFK       = PlayerAFK[source] == true,
+                                                                        leaderboard = lbResult or {},
+                                                                        milestones  = milestones,
+                                                                        loginStreak = loginStreak,
+                                                                    })
+                                                                end
+                                                            )
+                                                        end
+                                                    )
+                                                end
+                                            )
+                                        end
+                                    )
+                                end
+                            )
+                        end
+                    )
+                end
+            )
+        end
+    )
+end)
+
+---------------------------------------------------------------------------
 -- Admin Command: Reset a player's online time
 ---------------------------------------------------------------------------
 RegisterCommand(Config.Commands.resettime, function(source, args)
@@ -619,6 +745,178 @@ RegisterCommand(Config.Commands.resettime, function(source, args)
         TriggerClientEvent('chat:addMessage', source, { args = { 'SYSTEM', _L('admin_player_offline') } })
     end
 end, false)
+
+---------------------------------------------------------------------------
+-- Admin Command: Set a player's online time
+---------------------------------------------------------------------------
+RegisterCommand('settime', function(source, args)
+    if source == 0 then return end
+    if not IsAdmin(source) then
+        TriggerClientEvent('chat:addMessage', source, { args = { 'SYSTEM', _L('admin_no_permission') } })
+        return
+    end
+
+    local targetId = tonumber(args[1])
+    local minutes = tonumber(args[2])
+    if not targetId or not minutes or minutes < 0 then
+        TriggerClientEvent('chat:addMessage', source, { args = { 'SYSTEM', _L('admin_usage_settime') } })
+        return
+    end
+
+    local xTarget = ESX.GetPlayerFromId(targetId)
+    if xTarget then
+        MySQL.Async.execute(
+            'INSERT INTO users_online_time (identifier, name, online_time) VALUES (@identifier, @name, @time) ON DUPLICATE KEY UPDATE online_time = @time',
+            { ['@identifier'] = xTarget.identifier, ['@name'] = xTarget.getName(), ['@time'] = minutes },
+            function()
+                TriggerClientEvent('chat:addMessage', source, {
+                    args = { 'SYSTEM', _L('admin_settime_success', xTarget.getName(), targetId, FormatTime(minutes)) }
+                })
+                AuditLog(source, 'set_time', xTarget.identifier, xTarget.getName(), 'Set online time to ' .. minutes .. ' minutes')
+            end
+        )
+    else
+        TriggerClientEvent('chat:addMessage', source, { args = { 'SYSTEM', _L('admin_player_offline') } })
+    end
+end, false)
+
+---------------------------------------------------------------------------
+-- Admin Command: Add time to a player
+---------------------------------------------------------------------------
+RegisterCommand('addtime', function(source, args)
+    if source == 0 then return end
+    if not IsAdmin(source) then
+        TriggerClientEvent('chat:addMessage', source, { args = { 'SYSTEM', _L('admin_no_permission') } })
+        return
+    end
+
+    local targetId = tonumber(args[1])
+    local minutes = tonumber(args[2])
+    if not targetId or not minutes or minutes <= 0 then
+        TriggerClientEvent('chat:addMessage', source, { args = { 'SYSTEM', _L('admin_usage_addtime') } })
+        return
+    end
+
+    local xTarget = ESX.GetPlayerFromId(targetId)
+    if xTarget then
+        MySQL.Async.execute(
+            'INSERT INTO users_online_time (identifier, name, online_time) VALUES (@identifier, @name, @time) ON DUPLICATE KEY UPDATE online_time = online_time + @time',
+            { ['@identifier'] = xTarget.identifier, ['@name'] = xTarget.getName(), ['@time'] = minutes },
+            function()
+                TriggerClientEvent('chat:addMessage', source, {
+                    args = { 'SYSTEM', _L('admin_addtime_success', xTarget.getName(), targetId, FormatTime(minutes)) }
+                })
+                AuditLog(source, 'add_time', xTarget.identifier, xTarget.getName(), 'Added ' .. minutes .. ' minutes')
+            end
+        )
+    else
+        TriggerClientEvent('chat:addMessage', source, { args = { 'SYSTEM', _L('admin_player_offline') } })
+    end
+end, false)
+
+---------------------------------------------------------------------------
+-- Admin Command: Server statistics
+---------------------------------------------------------------------------
+RegisterCommand('serverstats', function(source, args)
+    if source == 0 then return end
+    if not IsAdmin(source) then
+        TriggerClientEvent('chat:addMessage', source, { args = { 'SYSTEM', _L('admin_no_permission') } })
+        return
+    end
+
+    MySQL.Async.fetchAll('SELECT COUNT(*) as total, COALESCE(SUM(online_time), 0) as total_time FROM users_online_time', {}, function(allResult)
+        MySQL.Async.fetchAll('SELECT COUNT(DISTINCT identifier) as today_active FROM users_online_daily WHERE date = CURDATE()', {}, function(todayResult)
+            MySQL.Async.fetchAll('SELECT COUNT(DISTINCT identifier) as week_active FROM users_online_daily WHERE date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)', {}, function(weekResult)
+                local totalPlayers = allResult[1] and allResult[1].total or 0
+                local totalMinutes = allResult[1] and allResult[1].total_time or 0
+                local todayActive = todayResult[1] and todayResult[1].today_active or 0
+                local weekActive = weekResult[1] and weekResult[1].week_active or 0
+                local onlineNow = #GetPlayers()
+
+                TriggerClientEvent('chat:addMessage', source, { args = { '', _L('serverstats_title') } })
+                TriggerClientEvent('chat:addMessage', source, { args = { '', _L('serverstats_online', onlineNow) } })
+                TriggerClientEvent('chat:addMessage', source, { args = { '', _L('serverstats_today', todayActive) } })
+                TriggerClientEvent('chat:addMessage', source, { args = { '', _L('serverstats_week', weekActive) } })
+                TriggerClientEvent('chat:addMessage', source, { args = { '', _L('serverstats_total_players', totalPlayers) } })
+                TriggerClientEvent('chat:addMessage', source, { args = { '', _L('serverstats_total_time', FormatTime(totalMinutes)) } })
+                TriggerClientEvent('chat:addMessage', source, { args = { '', _L('serverstats_footer') } })
+            end)
+        end)
+    end)
+end, false)
+
+---------------------------------------------------------------------------
+-- First-Join Welcome System
+---------------------------------------------------------------------------
+function ProcessFirstJoin(src, identifier, name)
+    if not Config.FirstJoin or not Config.FirstJoin.enabled then return end
+
+    MySQL.Async.fetchAll(
+        'SELECT id FROM users_online_time WHERE identifier = @identifier',
+        { ['@identifier'] = identifier },
+        function(result)
+            if not result[1] then
+                -- New player! Give welcome bonus
+                local xPlayer = ESX.GetPlayerFromId(src)
+                if xPlayer and Config.FirstJoin.bonusMoney and Config.FirstJoin.bonusMoney > 0 then
+                    xPlayer.addMoney(Config.FirstJoin.bonusMoney)
+                    TriggerClientEvent('chat:addMessage', src, {
+                        args = { 'WELCOME', _L('firstjoin_welcome', Config.FirstJoin.bonusMoney) }
+                    })
+                end
+                SendFirstJoinNotification(name)
+            end
+        end
+    )
+end
+
+---------------------------------------------------------------------------
+-- Discord Daily Report
+---------------------------------------------------------------------------
+if Config.Discord.enabled and Config.Discord.dailyReport then
+    Citizen.CreateThread(function()
+        while true do
+            Citizen.Wait(60000) -- Check every minute
+            local currentTime = os.date('%H:%M')
+            if currentTime == (Config.Discord.reportTime or '00:00') then
+                -- Generate daily report
+                local yesterday = os.date('%Y-%m-%d', os.time() - 86400)
+                MySQL.Async.fetchAll(
+                    'SELECT COUNT(DISTINCT identifier) as players, COALESCE(SUM(online_time), 0) as total_time FROM users_online_daily WHERE date = @date',
+                    { ['@date'] = yesterday },
+                    function(result)
+                        local players = result[1] and result[1].players or 0
+                        local totalTime = result[1] and result[1].total_time or 0
+
+                        MySQL.Async.fetchAll(
+                            'SELECT COUNT(*) as new_players FROM users_login_streaks WHERE DATE(last_login_date) = @date AND total_logins = 1',
+                            { ['@date'] = yesterday },
+                            function(newResult)
+                                local newPlayers = newResult[1] and newResult[1].new_players or 0
+
+                                MySQL.Async.fetchAll(
+                                    'SELECT name, online_time FROM users_online_daily WHERE date = @date ORDER BY online_time DESC LIMIT 5',
+                                    { ['@date'] = yesterday },
+                                    function(topResult)
+                                        local topList = ''
+                                        for i, row in ipairs(topResult) do
+                                            topList = topList .. ('#%d %s - %s\n'):format(i, row.name or 'Unknown', FormatTime(row.online_time))
+                                        end
+                                        if topList == '' then topList = 'No data' end
+
+                                        SendDailyReportNotification(yesterday, players, FormatTime(totalTime), newPlayers, topList)
+                                    end
+                                )
+                            end
+                        )
+                    end
+                )
+                -- Wait 61 seconds to avoid double-trigger
+                Citizen.Wait(61000)
+            end
+        end
+    end)
+end
 
 ---------------------------------------------------------------------------
 -- Online Time Tracking Loop
@@ -799,6 +1097,7 @@ RegisterNetEvent('esx:playerLoaded')
 AddEventHandler('esx:playerLoaded', function(playerId, xPlayer)
     local src = source
     if xPlayer then
+        ProcessFirstJoin(src, xPlayer.identifier, xPlayer.getName() or 'Unknown')
         ProcessDailyLogin(src, xPlayer.identifier)
 
         -- Record session start in DB

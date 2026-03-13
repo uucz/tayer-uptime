@@ -78,6 +78,33 @@ _LoadLocale('en', {
     ['discord_target']          = 'Target',
     ['discord_details']         = 'Details',
 
+    -- Admin v2.2.0
+    ['admin_usage_settime']  = 'Usage: /settime [Player ID] [Minutes]',
+    ['admin_settime_success'] = 'Set online time for player %s (ID: %s) to %s',
+    ['admin_usage_addtime']  = 'Usage: /addtime [Player ID] [Minutes]',
+    ['admin_addtime_success'] = 'Added time to player %s (ID: %s): +%s',
+
+    -- Server Stats
+    ['serverstats_title']         = '========== Server Statistics ==========',
+    ['serverstats_online']        = 'Currently Online: %d players',
+    ['serverstats_today']         = 'Active Today: %d players',
+    ['serverstats_week']          = 'Active This Week: %d players',
+    ['serverstats_total_players'] = 'Total Players: %d',
+    ['serverstats_total_time']    = 'Total Playtime: %s',
+    ['serverstats_footer']        = '=======================================',
+
+    -- First Join
+    ['firstjoin_welcome']    = 'Welcome to the server! Here is your welcome bonus: +$%s',
+
+    -- Discord v2.2.0
+    ['discord_first_join']          = 'New Player Joined!',
+    ['discord_daily_report']        = 'Daily Server Report',
+    ['discord_report_date']         = 'Date',
+    ['discord_report_players']      = 'Active Players',
+    ['discord_report_total_time']   = 'Total Playtime',
+    ['discord_report_new_players']  = 'New Players',
+    ['discord_report_top_players']  = 'Top Players',
+
     -- System
     ['db_table_created']     = '[tayer-uptime] Database table created',
     ['db_new_user']          = '[tayer-uptime] New user record: %s',

@@ -2,8 +2,8 @@ fx_version 'cerulean'
 game 'gta5'
 
 author 'Tayer Ruze (https://github.com/uucz)'
-description 'ESX Online Time Tracker — AFK detection, milestone rewards, daily login rewards, playtime roles, session history & Discord integration'
-version '2.1.0'
+description 'ESX Online Time Tracker — NUI dashboard, AFK detection, milestone rewards, daily login, playtime roles & Discord integration'
+version '2.2.0'
 
 shared_scripts {
     'config.lua',
@@ -19,6 +19,14 @@ server_scripts {
 
 client_scripts {
     'client.lua',
+}
+
+ui_page 'ui/index.html'
+
+files {
+    'ui/index.html',
+    'ui/style.css',
+    'ui/script.js',
 }
 
 dependencies {

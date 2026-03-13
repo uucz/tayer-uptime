@@ -78,6 +78,33 @@ _LoadLocale('zh-CN', {
     ['discord_target']          = '目标',
     ['discord_details']         = '详情',
 
+    -- Admin v2.2.0
+    ['admin_usage_settime']  = '用法: /settime [玩家ID] [分钟数]',
+    ['admin_settime_success'] = '已将玩家 %s (ID: %s) 的在线时长设为 %s',
+    ['admin_usage_addtime']  = '用法: /addtime [玩家ID] [分钟数]',
+    ['admin_addtime_success'] = '已为玩家 %s (ID: %s) 增加时长: +%s',
+
+    -- Server Stats
+    ['serverstats_title']         = '========== 服务器统计 ==========',
+    ['serverstats_online']        = '当前在线: %d 名玩家',
+    ['serverstats_today']         = '今日活跃: %d 名玩家',
+    ['serverstats_week']          = '本周活跃: %d 名玩家',
+    ['serverstats_total_players'] = '总注册玩家: %d',
+    ['serverstats_total_time']    = '总在线时长: %s',
+    ['serverstats_footer']        = '================================',
+
+    -- First Join
+    ['firstjoin_welcome']    = '欢迎来到服务器！这是您的新手礼包: +$%s',
+
+    -- Discord v2.2.0
+    ['discord_first_join']          = '新玩家加入！',
+    ['discord_daily_report']        = '每日服务器报告',
+    ['discord_report_date']         = '日期',
+    ['discord_report_players']      = '活跃玩家',
+    ['discord_report_total_time']   = '总在线时长',
+    ['discord_report_new_players']  = '新玩家',
+    ['discord_report_top_players']  = '活跃排行',
+
     -- System
     ['db_table_created']     = '[tayer-uptime] 数据表创建成功',
     ['db_new_user']          = '[tayer-uptime] 新用户记录: %s',
