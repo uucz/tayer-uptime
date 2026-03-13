@@ -104,6 +104,27 @@ Config.FirstJoin = {
     bonusMoney = 5000,  -- Welcome bonus for first-time players
 }
 
+-- HTTP API settings (for external tools, web dashboards, Discord bots)
+Config.API = {
+    enabled = false,
+    apiKey  = '',  -- Set a secret key; clients must send "Authorization: Bearer <key>"
+}
+
+-- Discord Role Sync (auto-assign Discord roles based on playtime)
+-- Requires a Discord Bot Token (more powerful than webhooks)
+Config.DiscordRoles = {
+    enabled  = false,
+    botToken = '',  -- Your Discord Bot token
+    guildId  = '',  -- Your Discord server (guild) ID
+    roles    = {
+        -- { hours = required_hours, roleId = 'discord_role_id' }
+        -- Example:
+        -- { hours = 10,  roleId = '123456789012345678' },
+        -- { hours = 50,  roleId = '234567890123456789' },
+        -- { hours = 100, roleId = '345678901234567890' },
+    },
+}
+
 -- Discord Webhook settings
 Config.Discord = {
     enabled     = false,

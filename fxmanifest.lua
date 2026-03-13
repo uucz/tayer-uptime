@@ -3,7 +3,7 @@ game 'gta5'
 
 author 'Tayer Ruze (https://github.com/uucz)'
 description 'Multi-Framework Online Time Tracker — NUI dashboard, AFK detection, milestone rewards, daily login, playtime roles & Discord integration'
-version '2.3.0'
+version '2.4.0'
 
 shared_scripts {
     'config.lua',
@@ -16,6 +16,7 @@ server_scripts {
     '@oxmysql/lib/MySQL.lua',
     'server/discord.lua',
     'server.lua',
+    'server/api.lua',
 }
 
 client_scripts {

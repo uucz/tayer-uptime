@@ -126,6 +126,19 @@ MySQL.ready(function()
             UNIQUE KEY `identifier_role` (`identifier`, `role_group`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
     ]])
+
+    -- Activity heatmap table (hourly breakdown by day-of-week)
+    MySQL.Async.execute([[
+        CREATE TABLE IF NOT EXISTS `users_activity_hourly` (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `identifier` varchar(255) NOT NULL,
+            `day_of_week` tinyint(1) NOT NULL COMMENT '0=Sun, 6=Sat',
+            `hour` tinyint(2) NOT NULL COMMENT '0-23',
+            `minutes` int(11) NOT NULL DEFAULT '0',
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `identifier_day_hour` (`identifier`, `day_of_week`, `hour`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    ]])
 end)
 
 ---------------------------------------------------------------------------
@@ -687,19 +700,38 @@ Bridge.RegisterServerCallback('tayer-uptime:getDashboardData', function(source, 
                                                                         loginStreak.claimedToday  = (row.last_claimed_date == today)
                                                                     end
 
-                                                                    cb({
-                                                                        playerName  = playerName,
-                                                                        totalTime   = totalTime,
-                                                                        dailyTime   = dailyTime,
-                                                                        weeklyTime  = weeklyTime,
-                                                                        monthlyTime = monthlyTime,
-                                                                        sessionTime = sessionTime,
-                                                                        rank        = rank,
-                                                                        isAFK       = PlayerAFK[source] == true,
-                                                                        leaderboard = lbResult or {},
-                                                                        milestones  = milestones,
-                                                                        loginStreak = loginStreak,
-                                                                    })
+                                                                    -- Get activity heatmap
+                                                                    MySQL.Async.fetchAll(
+                                                                        'SELECT day_of_week, hour, minutes FROM users_activity_hourly WHERE identifier = @id ORDER BY day_of_week, hour',
+                                                                        { ['@id'] = identifier },
+                                                                        function(heatmapResult)
+                                                                            local heatmap = {}
+                                                                            for d = 0, 6 do
+                                                                                heatmap[tostring(d)] = {}
+                                                                                for h = 0, 23 do
+                                                                                    heatmap[tostring(d)][tostring(h)] = 0
+                                                                                end
+                                                                            end
+                                                                            for _, row in ipairs(heatmapResult) do
+                                                                                heatmap[tostring(row.day_of_week)][tostring(row.hour)] = row.minutes
+                                                                            end
+
+                                                                            cb({
+                                                                                playerName  = playerName,
+                                                                                totalTime   = totalTime,
+                                                                                dailyTime   = dailyTime,
+                                                                                weeklyTime  = weeklyTime,
+                                                                                monthlyTime = monthlyTime,
+                                                                                sessionTime = sessionTime,
+                                                                                rank        = rank,
+                                                                                isAFK       = PlayerAFK[source] == true,
+                                                                                leaderboard = lbResult or {},
+                                                                                milestones  = milestones,
+                                                                                loginStreak = loginStreak,
+                                                                                heatmap     = heatmap,
+                                                                            })
+                                                                        end
+                                                                    )
                                                                 end
                                                             )
                                                         end
@@ -714,6 +746,33 @@ Bridge.RegisterServerCallback('tayer-uptime:getDashboardData', function(source, 
                     )
                 end
             )
+        end
+    )
+end)
+
+---------------------------------------------------------------------------
+-- Server Callback: Get activity heatmap data (for NUI)
+---------------------------------------------------------------------------
+Bridge.RegisterServerCallback('tayer-uptime:getActivityHeatmap', function(source, cb)
+    local identifier = Bridge.GetIdentifier(source)
+    if not identifier then cb({}) return end
+
+    MySQL.Async.fetchAll(
+        'SELECT day_of_week, hour, minutes FROM users_activity_hourly WHERE identifier = @id ORDER BY day_of_week, hour',
+        { ['@id'] = identifier },
+        function(result)
+            -- Build 7x24 grid (day_of_week x hour)
+            local grid = {}
+            for d = 0, 6 do
+                grid[d] = {}
+                for h = 0, 23 do
+                    grid[d][h] = 0
+                end
+            end
+            for _, row in ipairs(result) do
+                grid[row.day_of_week][row.hour] = row.minutes
+            end
+            cb(grid)
         end
     )
 end)
@@ -989,6 +1048,51 @@ if Config.Discord.enabled and Config.Discord.dailyReport then
 end
 
 ---------------------------------------------------------------------------
+-- Discord Role Sync: Auto-assign Discord roles based on playtime
+---------------------------------------------------------------------------
+function SyncDiscordRoles(src, identifier, totalMinutes)
+    if not Config.DiscordRoles or not Config.DiscordRoles.enabled then return end
+    if not Config.DiscordRoles.botToken or Config.DiscordRoles.botToken == '' then return end
+    if not Config.DiscordRoles.guildId or Config.DiscordRoles.guildId == '' then return end
+    if not Config.DiscordRoles.roles or #Config.DiscordRoles.roles == 0 then return end
+
+    -- Extract Discord ID from player identifiers
+    local discordId = nil
+    for i = 0, GetNumPlayerIdentifiers(src) - 1 do
+        local id = GetPlayerIdentifier(src, i)
+        if id and id:find('discord:') then
+            discordId = id:gsub('discord:', '')
+            break
+        end
+    end
+    if not discordId then return end
+
+    local totalHours = totalMinutes / 60
+    local guildId = Config.DiscordRoles.guildId
+    local botToken = Config.DiscordRoles.botToken
+
+    for _, roleConfig in ipairs(Config.DiscordRoles.roles) do
+        if totalHours >= roleConfig.hours then
+            -- Add role via Discord API
+            local url = ('https://discord.com/api/v10/guilds/%s/members/%s/roles/%s'):format(guildId, discordId, roleConfig.roleId)
+            PerformHttpRequest(url, function(statusCode)
+                if statusCode == 204 then
+                    -- Role assigned successfully (or already had it)
+                elseif statusCode == 403 then
+                    print(('[tayer-uptime] ^1Discord role sync: Missing permissions for role %s^0'):format(roleConfig.roleId))
+                elseif statusCode ~= 204 then
+                    print(('[tayer-uptime] ^3Discord role sync: HTTP %d for role %s^0'):format(statusCode or 0, roleConfig.roleId))
+                end
+            end, 'PUT', '', {
+                ['Authorization'] = 'Bot ' .. botToken,
+                ['Content-Type'] = 'application/json',
+                ['Content-Length'] = '0',
+            })
+        end
+    end
+end
+
+---------------------------------------------------------------------------
 -- Online Time Tracking Loop
 ---------------------------------------------------------------------------
 Citizen.CreateThread(function()
@@ -1027,6 +1131,14 @@ Citizen.CreateThread(function()
                     { ['@identifier'] = identifier, ['@name'] = name, ['@ym'] = yearMonth }
                 )
 
+                -- Update activity heatmap (day-of-week + hour bucket)
+                local dayOfWeek = tonumber(os.date('%w')) -- 0=Sun, 6=Sat
+                local hour = tonumber(os.date('%H'))
+                MySQL.Async.execute(
+                    'INSERT INTO users_activity_hourly (identifier, day_of_week, hour, minutes) VALUES (@id, @dow, @h, 1) ON DUPLICATE KEY UPDATE minutes = minutes + 1',
+                    { ['@id'] = identifier, ['@dow'] = dayOfWeek, ['@h'] = hour }
+                )
+
                 -- Check milestone rewards (every 5 minutes to reduce DB load)
                 if os.time() % 300 < 61 then
                     MySQL.Async.fetchAll(
@@ -1036,6 +1148,7 @@ Citizen.CreateThread(function()
                             if result[1] then
                                 CheckMilestones(src, identifier, result[1].online_time)
                                 CheckPlaytimeRoles(src, identifier, result[1].online_time)
+                                SyncDiscordRoles(src, identifier, result[1].online_time)
                             end
                         end
                     )

@@ -398,6 +398,75 @@ body {
     border-color: rgba(245, 158, 11, 0.15);
 }
 
+/* Activity Heatmap */
+.heatmap-header {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: #999;
+    margin-bottom: 12px;
+}
+
+.heatmap-container {
+    display: grid;
+    grid-template-columns: 36px repeat(24, 1fr);
+    gap: 2px;
+    margin-bottom: 12px;
+}
+
+.heatmap-day-label {
+    font-size: 10px;
+    color: #666;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 4px;
+}
+
+.heatmap-hour-label {
+    font-size: 9px;
+    color: #555;
+    text-align: center;
+}
+
+.heatmap-cell {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 2px;
+    min-width: 8px;
+    min-height: 8px;
+}
+
+.heatmap-cell.level-0 { background: rgba(255, 255, 255, 0.04); }
+.heatmap-cell.level-1 { background: rgba(124, 58, 237, 0.2); }
+.heatmap-cell.level-2 { background: rgba(124, 58, 237, 0.4); }
+.heatmap-cell.level-3 { background: rgba(124, 58, 237, 0.65); }
+.heatmap-cell.level-4 { background: rgba(124, 58, 237, 0.9); }
+
+.heatmap-cell:hover {
+    outline: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.heatmap-legend {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.heatmap-legend .heatmap-cell {
+    width: 12px;
+    height: 12px;
+    min-width: 12px;
+    min-height: 12px;
+}
+
+.heatmap-legend-label {
+    font-size: 11px;
+    color: #666;
+    margin: 0 4px;
+}
+
 /* Loading */
 .loading {
     text-align: center;

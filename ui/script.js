@@ -94,6 +94,9 @@ function renderDashboard(data) {
 
     // Streak
     renderStreak(data.loginStreak);
+
+    // Activity Heatmap
+    renderHeatmap(data.heatmap);
 }
 
 function updateAFKStatus(isAFK) {
@@ -197,6 +200,57 @@ function renderStreak(streak) {
     else if (count >= 14) flame.textContent = '🔥🔥';
     else if (count >= 1) flame.textContent = '🔥';
     else flame.textContent = '❄️';
+}
+
+function renderHeatmap(heatmap) {
+    var container = document.getElementById('heatmap-grid');
+    if (!heatmap) {
+        container.innerHTML = '<div class="loading">No activity data yet</div>';
+        return;
+    }
+
+    var dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    var html = '';
+
+    // Header row with hour labels
+    html += '<div class="heatmap-day-label"></div>';
+    for (var h = 0; h < 24; h++) {
+        if (h % 3 === 0) {
+            html += '<div class="heatmap-hour-label">' + h + '</div>';
+        } else {
+            html += '<div class="heatmap-hour-label"></div>';
+        }
+    }
+
+    // Find max value for scaling
+    var maxVal = 1;
+    for (var d = 0; d < 7; d++) {
+        var dayData = heatmap[String(d)] || {};
+        for (var h2 = 0; h2 < 24; h2++) {
+            var val = dayData[String(h2)] || 0;
+            if (val > maxVal) maxVal = val;
+        }
+    }
+
+    // Render each day row
+    for (var d2 = 0; d2 < 7; d2++) {
+        html += '<div class="heatmap-day-label">' + dayNames[d2] + '</div>';
+        var dayData2 = heatmap[String(d2)] || {};
+        for (var h3 = 0; h3 < 24; h3++) {
+            var minutes = dayData2[String(h3)] || 0;
+            var level = 0;
+            if (minutes > 0) {
+                var ratio = minutes / maxVal;
+                if (ratio > 0.75) level = 4;
+                else if (ratio > 0.5) level = 3;
+                else if (ratio > 0.25) level = 2;
+                else level = 1;
+            }
+            html += '<div class="heatmap-cell level-' + level + '" title="' + dayNames[d2] + ' ' + h3 + ':00 - ' + minutes + 'm"></div>';
+        }
+    }
+
+    container.innerHTML = html;
 }
 
 // ---- Utilities ----

@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2026-03-13
+
+### Added
+- **HTTP REST API** — JSON endpoints at `/api/leaderboard`, `/api/player/:identifier`, `/api/stats`, `/api/online` with Bearer token authentication for external tools, web dashboards, and Discord bots
+- **Discord Role Sync** — Auto-assign Discord roles based on playtime thresholds using Discord Bot API. Configurable role-to-hours mapping via `Config.DiscordRoles`
+- **Activity Heatmap** — New NUI tab showing GitHub-style 7x24 grid (day-of-week x hour) visualizing play patterns. Data stored in `users_activity_hourly` table
+- **Activity Data Collection** — Tracking loop now records hourly activity buckets for heatmap visualization
+- **API Configuration** — `Config.API` settings (enabled, apiKey) for HTTP endpoint control
+- **Discord Roles Configuration** — `Config.DiscordRoles` settings (botToken, guildId, roles array)
+
+### Changed
+- Dashboard callback now includes heatmap data
+- Tracking loop records activity hourly data alongside daily/monthly stats
+- Milestone/role checks now also trigger Discord role sync
+- `server/api.lua` added to server_scripts in fxmanifest
+
 ## [2.3.0] - 2026-03-13
 
 ### Added

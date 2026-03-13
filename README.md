@@ -27,6 +27,9 @@ A feature-rich **FiveM** resource for player online time tracking. Supports **ES
 - **Multi-Language** — Built-in support for zh-CN, en, es, fr, de, pt-BR
 - **Discord Webhooks** — Notifications for connect, disconnect, milestones, login rewards, role promotions, AFK kicks, admin actions, first-join, daily reports
 - **Discord Daily Report** — Automated daily server stats summary at configurable time
+- **HTTP REST API** — JSON endpoints for external tools, web dashboards, and Discord bots with token authentication
+- **Discord Role Sync** — Auto-assign Discord roles based on playtime using Discord Bot API
+- **Activity Heatmap** — GitHub-style 7x24 grid in NUI showing play patterns by day and hour
 - **Exports API** — 7 exports for other resources to query playtime data
 - **Data Maintenance** — Auto-cleanup of old daily records
 - **Crash-Safe** — Saves unsaved time on disconnect; handles resource restarts
@@ -145,6 +148,20 @@ local info = exports['tayer-uptime']:GetLoginStreak(source)
 -- Returns: { streak = 5, maxStreak = 12 }
 ```
 
+## HTTP API
+
+Enable in `config.lua` with `Config.API.enabled = true` and set an API key.
+
+```
+GET /api/leaderboard       — Top players (JSON)
+GET /api/leaderboard/20    — Top 20 players
+GET /api/player/:identifier — Player details (time, streak, etc.)
+GET /api/stats             — Server statistics
+GET /api/online            — Currently online players
+
+Authorization: Bearer YOUR_API_KEY
+```
+
 ## Database Tables
 
 | Table | Purpose |
@@ -157,6 +174,7 @@ local info = exports['tayer-uptime']:GetLoginStreak(source)
 | `users_sessions` | Session history (connect/disconnect times) |
 | `users_playtime_roles` | Granted playtime-based roles |
 | `uptime_audit_log` | Admin action audit trail |
+| `users_activity_hourly` | Hourly activity heatmap data |
 
 ## Security
 
@@ -184,6 +202,7 @@ tayer-uptime/
 │   ├── de.lua              # German
 │   └── pt-BR.lua           # Portuguese (Brazil)
 ├── server/
+│   ├── api.lua             # HTTP REST API endpoints
 │   └── discord.lua         # Discord webhook module
 ├── ui/
 │   ├── index.html          # NUI dashboard HTML
@@ -225,6 +244,9 @@ This project is licensed under the [MIT License](LICENSE).
 - **多语言** — 支持 zh-CN、en、es、fr、de、pt-BR
 - **Discord Webhook** — 上线、下线、里程碑、登录奖励、角色晋升、AFK 踢出、管理操作、新玩家、每日报告通知
 - **Discord 每日报告** — 可配置时间自动发送服务器每日统计摘要
+- **HTTP REST API** — JSON 接口供外部工具、Web 面板和 Discord 机器人使用，支持 Token 认证
+- **Discord 角色同步** — 基于时长自动分配 Discord 角色
+- **活跃度热力图** — NUI 中 GitHub 风格的 7x24 网格，展示每周每时段活跃模式
 - **Exports API** — 7 个接口供其他脚本查询
 - **数据维护** — 自动清理过期每日记录
 - **防崩溃** — 断线时保存未记录时间，支持资源重启
