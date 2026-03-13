@@ -1,6 +1,6 @@
 Config = {}
 
--- Language setting: 'zh-CN' or 'en'
+-- Language setting: 'zh-CN', 'en', 'es', 'fr', 'de', 'pt-BR'
 Config.Locale = 'zh-CN'
 
 -- Tracking interval in milliseconds (default: 60000 = 1 minute)
@@ -8,13 +8,15 @@ Config.UpdateInterval = 60000
 
 -- Command names (change these to customize in-game commands)
 Config.Commands = {
-    onlinetime = 'onlinetime',   -- Player checks own online time
-    toptime    = 'toptime',      -- View online time leaderboard
-    admintime  = 'admintime',    -- Admin checks a player's online time
-    resettime  = 'resettime',    -- Admin resets a player's online time
-    dailytime  = 'dailytime',    -- View today's online time
-    weeklytime = 'weeklytime',   -- View this week's online time
-    rewards    = 'rewards',      -- View milestone rewards progress
+    onlinetime  = 'onlinetime',    -- Player checks own online time
+    toptime     = 'toptime',       -- View online time leaderboard
+    admintime   = 'admintime',     -- Admin checks a player's online time
+    resettime   = 'resettime',     -- Admin resets a player's online time
+    dailytime   = 'dailytime',     -- View today's online time
+    weeklytime  = 'weeklytime',    -- View this week's online time
+    monthlytime = 'monthlytime',   -- View this month's online time
+    rewards     = 'rewards',       -- View milestone rewards progress
+    loginreward = 'loginreward',   -- View daily login reward status
 }
 
 -- Leaderboard settings
@@ -28,14 +30,15 @@ Config.AdminGroups = {
     'superadmin',
 }
 
--- AFK Detection settings
+-- AFK Detection settings (fully server-side, no client trust)
 Config.AFK = {
     enabled       = true,
     timeout       = 300,    -- Seconds of no movement before marking as AFK (default: 5 minutes)
-    checkInterval = 10000,  -- Client check interval in ms (default: 10 seconds)
+    checkInterval = 15,     -- Server check interval in seconds (default: 15 seconds)
     minDistance    = 5.0,    -- Minimum distance (meters) to move within checkInterval to count as active
     kickEnabled   = false,  -- Kick player after extended AFK (optional)
     kickTimeout   = 1800,   -- Seconds before AFK kick (default: 30 minutes, only if kickEnabled)
+    kickMessage   = 'You have been kicked for being AFK too long.',
 }
 
 -- Milestone Rewards settings
@@ -52,6 +55,39 @@ Config.Rewards = {
         { hours = 200,  money = 300000, label = '200h'  },
         { hours = 500,  money = 500000, label = '500h'  },
     },
+}
+
+-- Daily Login Rewards settings
+Config.DailyLogin = {
+    enabled     = true,
+    gracePeriod = 1,  -- Days allowed to miss before streak resets (0 = strict)
+    rewards = {
+        -- Day 1-7 cycle (repeats after day 7)
+        { day = 1, money = 1000  },
+        { day = 2, money = 2000  },
+        { day = 3, money = 3000  },
+        { day = 4, money = 4000  },
+        { day = 5, money = 5000  },
+        { day = 6, money = 7500  },
+        { day = 7, money = 10000 },  -- Weekly bonus
+    },
+}
+
+-- Playtime-Gated Roles (auto-assign groups based on total playtime)
+Config.PlaytimeRoles = {
+    enabled = true,
+    roles = {
+        -- { hours = required_hours, group = 'esx_group_name', label = 'display_name' }
+        -- Players are assigned the highest role they qualify for
+        -- NOTE: Only applies to players in the 'user' group (won't demote admins)
+    },
+}
+
+-- Data Maintenance settings
+Config.Maintenance = {
+    cleanupEnabled = false,     -- Auto-purge inactive player data
+    inactiveDays   = 90,        -- Days of inactivity before cleanup
+    cleanupTime    = '04:00',   -- Time to run cleanup (HH:MM, server time)
 }
 
 -- Discord Webhook settings

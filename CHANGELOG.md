@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-03-13
+
+### Added
+- **Server-Side AFK Detection** — Moved AFK detection entirely to server using `GetEntityCoords(GetPlayerPed())`, eliminating client-side exploitation
+- **AFK Kick** — Implemented `Config.AFK.kickEnabled` with configurable timeout and Discord notification
+- **Daily Login Rewards** — 7-day reward cycle with configurable streak tracking, grace period, and auto-claim on connect
+- **Playtime-Gated Roles** — Auto-assign ESX groups when players reach configured playtime thresholds (won't demote admins)
+- **Monthly Statistics** — New `/monthlytime` command and `users_online_monthly` database table
+- **Session History** — Full session recording in `users_sessions` table with connect/disconnect times and reasons
+- **Admin Audit Logging** — All admin actions logged to `uptime_audit_log` table and Discord webhook
+- **Data Maintenance** — Configurable auto-cleanup of old daily records for inactive players
+- **4 New Locales** — Spanish (es), French (fr), German (de), Portuguese-Brazil (pt-BR)
+- **4 New Exports** — `HasPlaytimeHours()`, `GetDailyPlaytime()`, `GetWeeklyPlaytime()`, `GetLoginStreak()`
+- **5 New Discord Notifications** — Login rewards, role promotions, AFK kicks, admin audits
+- **New Commands** — `/monthlytime`, `/loginreward`
+
+### Changed
+- AFK detection is now fully server-authoritative (removed exploitable client event `tayer-uptime:setAFKStatus`)
+- Client only receives display-only AFK status via `tayer-uptime:afkStatus` event
+- Milestone and role checks now run every 5 minutes instead of every minute to reduce DB load
+- Login rewards process on `esx:playerLoaded` instead of `playerConnecting` for reliability
+
+### Security
+- Eliminated client-to-server AFK trust vulnerability
+- Added rate-limiting protection on server-side AFK state changes
+- Added admin audit trail for all administrative actions
+- All sensitive operations (rewards, roles, time tracking) are server-side only
+
 ## [2.0.0] - 2026-03-12
 
 ### Added

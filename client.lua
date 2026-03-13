@@ -16,43 +16,21 @@ local function FormatTime(minutes)
 end
 
 ---------------------------------------------------------------------------
--- AFK Detection (client-side distance tracking)
+-- AFK Status Display (server-authoritative, client only receives status)
 ---------------------------------------------------------------------------
-local lastPos = nil
-local afkSeconds = 0
 local isAFK = false
 
-if Config.AFK.enabled then
-    Citizen.CreateThread(function()
-        while true do
-            Citizen.Wait(Config.AFK.checkInterval)
-
-            local ped = PlayerPedId()
-            local currentPos = GetEntityCoords(ped)
-
-            if lastPos then
-                local distance = #(currentPos - lastPos)
-                if distance < Config.AFK.minDistance then
-                    afkSeconds = afkSeconds + (Config.AFK.checkInterval / 1000)
-                    if afkSeconds >= Config.AFK.timeout and not isAFK then
-                        isAFK = true
-                        TriggerServerEvent('tayer-uptime:setAFKStatus', true)
-                        ESX.ShowNotification(_L('afk_detected'))
-                    end
-                else
-                    if isAFK then
-                        isAFK = false
-                        TriggerServerEvent('tayer-uptime:setAFKStatus', false)
-                        ESX.ShowNotification(_L('afk_returned'))
-                    end
-                    afkSeconds = 0
-                end
-            end
-
-            lastPos = currentPos
+RegisterNetEvent('tayer-uptime:afkStatus')
+AddEventHandler('tayer-uptime:afkStatus', function(afkState)
+    if isAFK ~= afkState then
+        isAFK = afkState
+        if isAFK then
+            ESX.ShowNotification(_L('afk_detected'))
+        else
+            ESX.ShowNotification(_L('afk_returned'))
         end
-    end)
-end
+    end
+end)
 
 ---------------------------------------------------------------------------
 -- Command: Check your own online time
@@ -123,6 +101,15 @@ RegisterCommand(Config.Commands.weeklytime, function()
 end, false)
 
 ---------------------------------------------------------------------------
+-- Command: Check this month's online time
+---------------------------------------------------------------------------
+RegisterCommand(Config.Commands.monthlytime, function()
+    ESX.TriggerServerCallback('tayer-uptime:getMonthlyTime', function(monthlyTime)
+        ESX.ShowNotification(_L('monthly_time', FormatTime(monthlyTime)))
+    end)
+end, false)
+
+---------------------------------------------------------------------------
 -- Command: View milestone rewards progress
 ---------------------------------------------------------------------------
 RegisterCommand(Config.Commands.rewards, function()
@@ -158,5 +145,32 @@ RegisterCommand(Config.Commands.rewards, function()
         end
 
         TriggerEvent('chat:addMessage', { args = { '', _L('rewards_footer') } })
+    end)
+end, false)
+
+---------------------------------------------------------------------------
+-- Command: View daily login reward status
+---------------------------------------------------------------------------
+RegisterCommand(Config.Commands.loginreward, function()
+    if not Config.DailyLogin.enabled then
+        ESX.ShowNotification(_L('login_disabled'))
+        return
+    end
+
+    ESX.TriggerServerCallback('tayer-uptime:getLoginStatus', function(data)
+        if not data then return end
+
+        TriggerEvent('chat:addMessage', { args = { '', _L('login_title') } })
+        TriggerEvent('chat:addMessage', { args = { '', _L('login_streak', data.currentStreak) } })
+        TriggerEvent('chat:addMessage', { args = { '', _L('login_max_streak', data.maxStreak) } })
+        TriggerEvent('chat:addMessage', { args = { '', _L('login_total', data.totalLogins) } })
+
+        if data.claimedToday then
+            TriggerEvent('chat:addMessage', { args = { '', _L('login_claimed_today') } })
+        else
+            TriggerEvent('chat:addMessage', { args = { '', _L('login_not_claimed') } })
+        end
+
+        TriggerEvent('chat:addMessage', { args = { '', _L('login_footer') } })
     end)
 end, false)

@@ -4,7 +4,7 @@
 [![FiveM](https://img.shields.io/badge/FiveM-ESX-orange.svg)](https://fivem.net)
 [![GitHub Stars](https://img.shields.io/github/stars/uucz/tayer-uptime?style=social)](https://github.com/uucz/tayer-uptime)
 
-A feature-rich **FiveM ESX** resource that automatically tracks player online time with AFK detection, milestone rewards, daily/weekly stats, leaderboard rankings, admin tools, and Discord webhook notifications.
+A feature-rich **FiveM ESX** resource for player online time tracking with server-side AFK detection, milestone rewards, daily login streaks, playtime-gated roles, session history, admin audit logging, and Discord webhook notifications.
 
 > **中文文档见下方** / Chinese documentation below
 
@@ -13,17 +13,20 @@ A feature-rich **FiveM ESX** resource that automatically tracks player online ti
 ## Features
 
 - **Automatic Time Tracking** — Records each player's online time every minute
-- **AFK Detection** — Distance-based detection pauses tracking for idle players
+- **Server-Side AFK Detection** — Fully server-authoritative position tracking, no client trust
+- **AFK Kick** — Optional auto-kick after extended AFK period
 - **Milestone Rewards** — Configurable playtime milestones with automatic money rewards
-- **Daily/Weekly Stats** — Track and view daily and weekly online time breakdowns
+- **Daily Login Rewards** — Streak-based login rewards with grace period and 7-day cycles
+- **Playtime-Gated Roles** — Auto-assign ESX groups based on total playtime
+- **Daily/Weekly/Monthly Stats** — Track and view time breakdowns by period
+- **Session History** — Full session recording with connect/disconnect times and reasons
 - **Leaderboard** — View top players ranked by online time
-- **Admin Commands** — Check or reset any player's online time
-- **Multi-Language** — Built-in Chinese (zh-CN) and English (en) support
-- **Discord Webhooks** — Connect/disconnect notifications, milestone achievements
-- **Exports API** — Other resources can query playtime data
-- **Fully Configurable** — Customize commands, intervals, AFK settings, rewards, and more via `config.lua`
-- **Oxmysql Storage** — Reliable database-backed persistence
-- **Crash-Safe** — Saves unsaved time on player disconnect; handles resource restarts
+- **Admin Commands** — Check or reset any player's online time with audit logging
+- **Multi-Language** — Built-in support for zh-CN, en, es, fr, de, pt-BR
+- **Discord Webhooks** — Notifications for connect, disconnect, milestones, login rewards, role promotions, AFK kicks, admin actions
+- **Exports API** — 7 exports for other resources to query playtime data
+- **Data Maintenance** — Auto-cleanup of old daily records
+- **Crash-Safe** — Saves unsaved time on disconnect; handles resource restarts
 
 ## Requirements
 
@@ -43,53 +46,53 @@ A feature-rich **FiveM ESX** resource that automatically tracks player online ti
    ```
    ensure tayer-uptime
    ```
-4. The database tables will be created automatically on first start.
+4. All database tables are created automatically on first start.
 
 ## Configuration
 
-Edit [`config.lua`](config.lua) to customize the resource:
+Edit [`config.lua`](config.lua) to customize:
 
 ```lua
-Config.Locale         = 'zh-CN'  -- Language: 'zh-CN' or 'en'
+Config.Locale         = 'zh-CN'  -- 'zh-CN', 'en', 'es', 'fr', 'de', 'pt-BR'
 Config.UpdateInterval = 60000    -- Tracking interval (ms)
 
-Config.Commands = {
-    onlinetime = 'onlinetime',   -- Check own time
-    toptime    = 'toptime',      -- Leaderboard
-    admintime  = 'admintime',    -- Admin: check player time
-    resettime  = 'resettime',    -- Admin: reset player time
-    dailytime  = 'dailytime',    -- Check today's time
-    weeklytime = 'weeklytime',   -- Check this week's time
-    rewards    = 'rewards',      -- View milestone rewards
-}
-
--- AFK Detection
+-- AFK Detection (fully server-side)
 Config.AFK = {
     enabled       = true,
     timeout       = 300,    -- 5 minutes before AFK
-    checkInterval = 10000,  -- Client check every 10s
+    checkInterval = 15,     -- Server check every 15s
     minDistance    = 5.0,    -- Minimum movement (meters)
+    kickEnabled   = false,  -- Optional AFK kick
+    kickTimeout   = 1800,   -- 30 minutes before kick
 }
 
--- Milestone Rewards
-Config.Rewards = {
-    enabled = true,
-    milestones = {
-        { hours = 1,   money = 5000,   label = '1h'   },
-        { hours = 5,   money = 15000,  label = '5h'   },
-        { hours = 10,  money = 30000,  label = '10h'  },
-        { hours = 24,  money = 50000,  label = '24h'  },
-        { hours = 48,  money = 80000,  label = '48h'  },
-        { hours = 100, money = 150000, label = '100h' },
-        { hours = 200, money = 300000, label = '200h' },
-        { hours = 500, money = 500000, label = '500h' },
+-- Daily Login Rewards
+Config.DailyLogin = {
+    enabled     = true,
+    gracePeriod = 1,  -- Days allowed to miss before streak resets
+    rewards = {
+        { day = 1, money = 1000  },
+        { day = 2, money = 2000  },
+        -- ... up to day 7 (cycles)
+        { day = 7, money = 10000 },
     },
 }
 
-Config.Discord = {
-    enabled    = false,
-    webhookUrl = '',
-    botName    = 'Tayer Uptime',
+-- Playtime-Gated Roles
+Config.PlaytimeRoles = {
+    enabled = true,
+    roles = {
+        { hours = 10,  group = 'regular',  label = 'Regular' },
+        { hours = 50,  group = 'veteran',  label = 'Veteran' },
+        { hours = 100, group = 'trusted',  label = 'Trusted' },
+    },
+}
+
+-- Data Maintenance
+Config.Maintenance = {
+    cleanupEnabled = false,
+    inactiveDays   = 90,
+    cleanupTime    = '04:00',
 }
 ```
 
@@ -101,44 +104,78 @@ Config.Discord = {
 | `/toptime` | View online time leaderboard | Everyone |
 | `/dailytime` | Check today's online time | Everyone |
 | `/weeklytime` | Check this week's online time | Everyone |
+| `/monthlytime` | Check this month's online time | Everyone |
 | `/rewards` | View milestone rewards progress | Everyone |
+| `/loginreward` | View daily login reward status | Everyone |
 | `/admintime [id]` | Check a specific player's online time | Admin |
-| `/resettime [id]` | Reset a player's online time | Admin |
+| `/resettime [id]` | Reset a player's online time (audited) | Admin |
 
 ## Exports API
 
-Other resources can use these exports to query playtime data:
-
 ```lua
--- Get a player's total online time (in minutes)
+-- Get total online time (minutes)
 local minutes = exports['tayer-uptime']:GetPlaytime(source)
 
--- Check if a player is currently AFK
+-- Check if player is AFK
 local afk = exports['tayer-uptime']:IsPlayerAFK(source)
 
--- Get top N players by online time
-local topPlayers = exports['tayer-uptime']:GetTopPlayers(10)
--- Returns: { { name = "Player1", online_time = 1234 }, ... }
+-- Check if player has minimum hours
+local has100h = exports['tayer-uptime']:HasPlaytimeHours(source, 100)
+
+-- Get top N players
+local top = exports['tayer-uptime']:GetTopPlayers(10)
+
+-- Get daily/weekly playtime (minutes)
+local daily = exports['tayer-uptime']:GetDailyPlaytime(source)
+local weekly = exports['tayer-uptime']:GetWeeklyPlaytime(source)
+
+-- Get login streak info
+local info = exports['tayer-uptime']:GetLoginStreak(source)
+-- Returns: { streak = 5, maxStreak = 12 }
 ```
+
+## Database Tables
+
+| Table | Purpose |
+|---|---|
+| `users_online_time` | Total cumulative online time per player |
+| `users_online_daily` | Daily online time breakdown |
+| `users_online_monthly` | Monthly online time breakdown |
+| `users_online_rewards` | Claimed milestone rewards |
+| `users_login_streaks` | Daily login streaks and history |
+| `users_sessions` | Session history (connect/disconnect times) |
+| `users_playtime_roles` | Granted playtime-based roles |
+| `uptime_audit_log` | Admin action audit trail |
+
+## Security
+
+- **Server-authoritative AFK detection** — Uses `GetEntityCoords(GetPlayerPed())` server-side; no client events to exploit
+- **Parameterized SQL queries** — All database operations use `@parameters` to prevent injection
+- **Admin audit logging** — All admin actions are logged to database and Discord
+- **No client-to-server trust** — All rewards, role changes, and time tracking are server-side only
 
 ## Project Structure
 
 ```
 tayer-uptime/
-├── config.lua              # Configuration file
-├── client.lua              # Client-side commands & AFK detection
-├── server.lua              # Server-side logic, callbacks & exports
+├── config.lua              # Configuration
+├── client.lua              # Client-side commands & AFK display
+├── server.lua              # Server-side logic, AFK detection, rewards, roles
 ├── fxmanifest.lua          # Resource manifest
 ├── shared/
-│   └── locale.lua          # Locale loading system
+│   └── locale.lua          # Locale system
 ├── locales/
-│   ├── zh-CN.lua           # Chinese translations
-│   └── en.lua              # English translations
+│   ├── zh-CN.lua           # Chinese
+│   ├── en.lua              # English
+│   ├── es.lua              # Spanish
+│   ├── fr.lua              # French
+│   ├── de.lua              # German
+│   └── pt-BR.lua           # Portuguese (Brazil)
 ├── server/
 │   └── discord.lua         # Discord webhook module
-├── CHANGELOG.md            # Version history
-├── CONTRIBUTING.md         # Contribution guide
-└── LICENSE                 # MIT License
+├── CHANGELOG.md
+├── CONTRIBUTING.md
+└── LICENSE
 ```
 
 ## Contributing
@@ -153,66 +190,61 @@ This project is licensed under the [MIT License](LICENSE).
 
 # Tayer Uptime（中文）
 
-一个功能丰富的 **FiveM ESX** 资源，用于自动追踪玩家在线时长，具备 AFK 检测、里程碑奖励、每日/每周统计、排行榜、管理员工具和 Discord Webhook 通知。
+一个功能丰富的 **FiveM ESX** 资源，具备服务端 AFK 检测、里程碑奖励、每日登录奖励、时长门控角色、会话历史、管理员审计日志和 Discord Webhook 通知。
 
 ## 功能特点
 
-- **自动时长追踪** — 每分钟自动记录每位玩家的在线时间
-- **AFK 检测** — 基于距离的检测，暂停挂机玩家的时长追踪
-- **里程碑奖励** — 可配置的在线时长里程碑，自动发放金钱奖励
-- **每日/每周统计** — 查看每日和每周在线时长
-- **排行榜** — 查看在线时长排行榜
-- **管理员命令** — 查看或重置任意玩家的在线时长
-- **多语言支持** — 内置中文（zh-CN）和英文（en）
-- **Discord Webhook** — 上线/下线通知、里程碑达成通知
-- **Exports API** — 其他脚本可查询在线时长数据
-- **完全可配置** — 通过 `config.lua` 自定义命令、间隔、AFK 设置、奖励等
-- **Oxmysql 存储** — 可靠的数据库持久化存储
-- **防崩溃** — 玩家断开时保存未记录的时间，支持资源重启
-
-## 依赖
-
-- [ESX Framework](https://github.com/esx-framework/esx-legacy)
-- [Oxmysql](https://github.com/overextended/oxmysql)
-
-## 安装
-
-1. 克隆仓库：
-   ```bash
-   git clone https://github.com/uucz/tayer-uptime.git
-   ```
-2. 将 `tayer-uptime` 文件夹放入服务器的 `resources/` 目录。
-3. 在 `server.cfg` 中添加：
-   ```
-   ensure tayer-uptime
-   ```
-4. 数据库表会在首次启动时自动创建。
+- **自动时长追踪** — 每分钟自动记录在线时间
+- **服务端 AFK 检测** — 完全服务端权威位置追踪，无客户端信任
+- **AFK 踢出** — 可选长时间 AFK 自动踢出
+- **里程碑奖励** — 可配置时长里程碑自动发放金钱
+- **每日登录奖励** — 连续登录奖励，支持宽限期和 7 天循环
+- **时长门控角色** — 根据总时长自动分配 ESX 权限组
+- **每日/每周/每月统计** — 分时段查看在线时长
+- **会话历史** — 完整记录每次连接/断开时间和原因
+- **排行榜** — 在线时长排名
+- **管理员命令** — 查看/重置时长，带审计日志
+- **多语言** — 支持 zh-CN、en、es、fr、de、pt-BR
+- **Discord Webhook** — 上线、下线、里程碑、登录奖励、角色晋升、AFK 踢出、管理操作通知
+- **Exports API** — 7 个接口供其他脚本查询
+- **数据维护** — 自动清理过期每日记录
+- **防崩溃** — 断线时保存未记录时间，支持资源重启
 
 ## 命令
 
 | 命令 | 说明 | 权限 |
 |---|---|---|
-| `/onlinetime` | 查看自己的总在线时长 | 所有玩家 |
-| `/toptime` | 查看在线时长排行榜 | 所有玩家 |
+| `/onlinetime` | 查看总在线时长 | 所有玩家 |
+| `/toptime` | 查看排行榜 | 所有玩家 |
 | `/dailytime` | 查看今日在线时长 | 所有玩家 |
 | `/weeklytime` | 查看本周在线时长 | 所有玩家 |
+| `/monthlytime` | 查看本月在线时长 | 所有玩家 |
 | `/rewards` | 查看里程碑奖励进度 | 所有玩家 |
-| `/admintime [ID]` | 查看指定玩家的在线时长 | 管理员 |
-| `/resettime [ID]` | 重置指定玩家的在线时长 | 管理员 |
+| `/loginreward` | 查看每日登录状态 | 所有玩家 |
+| `/admintime [ID]` | 查看指定玩家时长 | 管理员 |
+| `/resettime [ID]` | 重置指定玩家时长 (有审计) | 管理员 |
 
 ## Exports API
 
-其他脚本可使用以下接口查询数据：
-
 ```lua
--- 获取玩家总在线时长（分钟）
+-- 获取总在线时长（分钟）
 local minutes = exports['tayer-uptime']:GetPlaytime(source)
 
--- 检查玩家是否处于 AFK 状态
+-- 检查 AFK 状态
 local afk = exports['tayer-uptime']:IsPlayerAFK(source)
 
--- 获取在线时长前 N 名玩家
-local topPlayers = exports['tayer-uptime']:GetTopPlayers(10)
+-- 检查是否达到指定时长
+local has100h = exports['tayer-uptime']:HasPlaytimeHours(source, 100)
+
+-- 获取前 N 名
+local top = exports['tayer-uptime']:GetTopPlayers(10)
+
+-- 获取每日/每周时长
+local daily = exports['tayer-uptime']:GetDailyPlaytime(source)
+local weekly = exports['tayer-uptime']:GetWeeklyPlaytime(source)
+
+-- 获取登录连续信息
+local info = exports['tayer-uptime']:GetLoginStreak(source)
 ```
 
 ## 许可证

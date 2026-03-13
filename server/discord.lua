@@ -68,3 +68,55 @@ function SendMilestoneNotification(playerName, milestone, reward)
     )
     SendToDiscord(title, message, 16766720) -- Gold
 end
+
+--- Send a login reward notification to Discord
+--- @param playerName string The player's name
+--- @param streak number The current login streak
+--- @param reward number The reward amount
+function SendLoginRewardNotification(playerName, streak, reward)
+    local title = _L('discord_login_reward')
+    local message = ('**%s:** %s\n**%s:** %d\n**%s:** $%s'):format(
+        _L('discord_player'), playerName,
+        _L('discord_login_streak'), streak,
+        _L('discord_login_reward_amount'), tostring(reward)
+    )
+    SendToDiscord(title, message, 3447003) -- Blue
+end
+
+--- Send a role promotion notification to Discord
+--- @param playerName string The player's name
+--- @param roleLabel string The role display name
+--- @param requiredHours number Hours required for this role
+function SendRolePromotionNotification(playerName, roleLabel, requiredHours)
+    local title = _L('discord_role_promotion')
+    local message = ('**%s:** %s\n**%s:** %s\n**%s:** %dh'):format(
+        _L('discord_player'), playerName,
+        _L('discord_new_role'), roleLabel,
+        _L('discord_required_hours'), requiredHours
+    )
+    SendToDiscord(title, message, 10181046) -- Purple
+end
+
+--- Send an AFK kick notification to Discord
+--- @param playerName string The player's name
+function SendAFKKickNotification(playerName)
+    local title = _L('discord_afk_kick')
+    local message = ('**%s:** %s'):format(_L('discord_player'), playerName)
+    SendToDiscord(title, message, 15105570) -- Orange
+end
+
+--- Send an admin audit notification to Discord
+--- @param adminName string The admin's name
+--- @param action string The action performed
+--- @param targetName string The target player's name
+--- @param details string Additional details
+function SendAuditNotification(adminName, action, targetName, details)
+    local title = _L('discord_audit')
+    local message = ('**%s:** %s\n**%s:** %s\n**%s:** %s\n**%s:** %s'):format(
+        _L('discord_admin'), adminName,
+        _L('discord_action'), action,
+        _L('discord_target'), targetName or 'N/A',
+        _L('discord_details'), details or 'N/A'
+    )
+    SendToDiscord(title, message, 9807270) -- Dark grey
+end

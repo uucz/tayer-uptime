@@ -5,6 +5,7 @@ _LoadLocale('zh-CN', {
     ['no_data']              = '暂无在线时间数据',
     ['daily_time']           = '今日在线时长: ~g~%s',
     ['weekly_time']          = '本周在线时长: ~g~%s',
+    ['monthly_time']         = '本月在线时长: ~g~%s',
 
     -- Time formatting
     ['time_format']          = '%d 小时 %d 分钟',
@@ -41,15 +42,41 @@ _LoadLocale('zh-CN', {
     ['rewards_footer']       = '================================',
     ['rewards_disabled']     = '里程碑奖励系统当前未启用',
 
+    -- Daily Login
+    ['login_reward_claimed'] = '~g~每日登录奖励！~s~ 连续第 %d 天 — +$%s',
+    ['login_title']          = '========== 每日登录状态 ==========',
+    ['login_streak']         = '当前连续登录: %d 天',
+    ['login_max_streak']     = '最高连续记录: %d 天',
+    ['login_total']          = '总登录次数: %d',
+    ['login_claimed_today']  = '今日奖励: [已领取]',
+    ['login_not_claimed']    = '今日奖励: [未领取 - 重新登录可领取]',
+    ['login_footer']         = '==================================',
+    ['login_disabled']       = '每日登录奖励系统当前未启用',
+
+    -- Playtime Roles
+    ['role_promoted']        = '~g~恭喜！~s~ 您已晋升为: %s',
+
     -- Discord
     ['discord_connect']      = '玩家上线',
     ['discord_disconnect']   = '玩家下线',
     ['discord_player']       = '玩家',
     ['discord_session_time'] = '本次在线时长',
     ['discord_total_time']   = '累计在线时长',
-    ['discord_milestone']        = '达成里程碑！',
+    ['discord_milestone']         = '达成里程碑！',
     ['discord_milestone_reached'] = '里程碑',
     ['discord_milestone_reward']  = '奖励',
+    ['discord_login_reward']        = '每日登录奖励',
+    ['discord_login_streak']        = '连续登录',
+    ['discord_login_reward_amount'] = '奖励',
+    ['discord_role_promotion']  = '角色晋升',
+    ['discord_new_role']        = '新角色',
+    ['discord_required_hours']  = '所需时长',
+    ['discord_afk_kick']        = 'AFK 踢出',
+    ['discord_audit']           = '管理员操作',
+    ['discord_admin']           = '管理员',
+    ['discord_action']          = '操作',
+    ['discord_target']          = '目标',
+    ['discord_details']         = '详情',
 
     -- System
     ['db_table_created']     = '[tayer-uptime] 数据表创建成功',
