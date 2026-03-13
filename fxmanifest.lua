@@ -2,13 +2,14 @@ fx_version 'cerulean'
 game 'gta5'
 
 author 'Tayer Ruze (https://github.com/uucz)'
-description 'ESX Online Time Tracker — NUI dashboard, AFK detection, milestone rewards, daily login, playtime roles & Discord integration'
-version '2.2.0'
+description 'Multi-Framework Online Time Tracker — NUI dashboard, AFK detection, milestone rewards, daily login, playtime roles & Discord integration'
+version '2.3.0'
 
 shared_scripts {
     'config.lua',
     'shared/locale.lua',
     'locales/*.lua',
+    'shared/bridge.lua',
 }
 
 server_scripts {
@@ -29,7 +30,7 @@ files {
     'ui/script.js',
 }
 
+-- Only oxmysql is required; framework is auto-detected
 dependencies {
-    'es_extended',
     'oxmysql',
 }

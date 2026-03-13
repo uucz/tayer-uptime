@@ -1,5 +1,4 @@
-ESX = exports["es_extended"]:getSharedObject()
-
+-- Bridge is loaded via shared_scripts (shared/bridge.lua)
 -- Initialize locale
 _SetLocale(Config.Locale)
 
@@ -145,11 +144,9 @@ end
 -- Helper: Check if player has admin permission
 ---------------------------------------------------------------------------
 function IsAdmin(source)
-    local xPlayer = ESX.GetPlayerFromId(source)
-    if not xPlayer then return false end
-
-    for _, group in ipairs(Config.AdminGroups) do
-        if xPlayer.getGroup() == group then
+    local group = Bridge.GetGroup(source)
+    for _, adminGroup in ipairs(Config.AdminGroups) do
+        if group == adminGroup then
             return true
         end
     end
@@ -160,14 +157,15 @@ end
 -- Helper: Log admin action to audit table and Discord
 ---------------------------------------------------------------------------
 function AuditLog(adminSource, action, targetIdentifier, targetName, details)
-    local xAdmin = ESX.GetPlayerFromId(adminSource)
-    if not xAdmin then return end
+    local adminId = Bridge.GetIdentifier(adminSource)
+    local adminName = Bridge.GetName(adminSource)
+    if not adminId then return end
 
     MySQL.Async.execute(
         'INSERT INTO uptime_audit_log (admin_identifier, admin_name, action, target_identifier, target_name, details) VALUES (@admin_id, @admin_name, @action, @target_id, @target_name, @details)',
         {
-            ['@admin_id']    = xAdmin.identifier,
-            ['@admin_name']  = xAdmin.getName(),
+            ['@admin_id']    = adminId,
+            ['@admin_name']  = adminName,
             ['@action']      = action,
             ['@target_id']   = targetIdentifier,
             ['@target_name'] = targetName,
@@ -175,7 +173,7 @@ function AuditLog(adminSource, action, targetIdentifier, targetName, details)
         }
     )
 
-    SendAuditNotification(xAdmin.getName(), action, targetName, details)
+    SendAuditNotification(adminName, action, targetName, details)
 end
 
 ---------------------------------------------------------------------------
@@ -246,18 +244,33 @@ function CheckMilestones(src, identifier, totalMinutes)
 
             for _, milestone in ipairs(Config.Rewards.milestones) do
                 if totalHours >= milestone.hours and not claimedSet[milestone.hours] then
-                    local xPlayer = ESX.GetPlayerFromId(src)
-                    if xPlayer then
-                        xPlayer.addMoney(milestone.money)
-                        MySQL.Async.execute(
-                            'INSERT IGNORE INTO users_online_rewards (identifier, milestone_hours) VALUES (@identifier, @hours)',
-                            { ['@identifier'] = identifier, ['@hours'] = milestone.hours }
-                        )
-                        TriggerClientEvent('chat:addMessage', src, {
-                            args = { 'REWARD', _L('reward_claimed', milestone.label, milestone.money) }
-                        })
-                        SendMilestoneNotification(xPlayer.getName(), milestone.label, milestone.money)
+                    local playerName = Bridge.GetName(src)
+                    -- Grant reward based on type
+                    local rewardType = milestone.type or 'money'
+                    if rewardType == 'money' then
+                        Bridge.AddMoney(src, milestone.money or 0)
+                    elseif rewardType == 'item' then
+                        Bridge.AddItem(src, milestone.item, milestone.count or 1)
+                    elseif rewardType == 'vehicle' then
+                        -- Vehicle rewards handled via callback or SQL
+                        if milestone.callback then
+                            milestone.callback(src, identifier)
+                        end
                     end
+
+                    -- Always grant money if specified alongside other types
+                    if rewardType ~= 'money' and milestone.money and milestone.money > 0 then
+                        Bridge.AddMoney(src, milestone.money)
+                    end
+
+                    MySQL.Async.execute(
+                        'INSERT IGNORE INTO users_online_rewards (identifier, milestone_hours) VALUES (@identifier, @hours)',
+                        { ['@identifier'] = identifier, ['@hours'] = milestone.hours }
+                    )
+
+                    local rewardText = milestone.money and ('$' .. milestone.money) or milestone.label
+                    Bridge.Notify(src, _L('reward_claimed', milestone.label, rewardText), 'success')
+                    SendMilestoneNotification(playerName, milestone.label, milestone.money or 0)
                 end
             end
         end
@@ -271,11 +284,10 @@ function CheckPlaytimeRoles(src, identifier, totalMinutes)
     if not Config.PlaytimeRoles.enabled then return end
     if not Config.PlaytimeRoles.roles or #Config.PlaytimeRoles.roles == 0 then return end
 
-    local xPlayer = ESX.GetPlayerFromId(src)
-    if not xPlayer then return end
-
     -- Only auto-assign roles to regular users (don't demote admins)
-    local currentGroup = xPlayer.getGroup()
+    local currentGroup = Bridge.GetGroup(src)
+    if not currentGroup then return end
+
     local isAdmin = false
     for _, group in ipairs(Config.AdminGroups) do
         if currentGroup == group then
@@ -304,15 +316,13 @@ function CheckPlaytimeRoles(src, identifier, totalMinutes)
             { ['@identifier'] = identifier, ['@group'] = bestRole.group },
             function(result)
                 if #result == 0 then
-                    xPlayer.setGroup(bestRole.group)
+                    Bridge.SetGroup(src, bestRole.group)
                     MySQL.Async.execute(
                         'INSERT IGNORE INTO users_playtime_roles (identifier, role_group) VALUES (@identifier, @group)',
                         { ['@identifier'] = identifier, ['@group'] = bestRole.group }
                     )
-                    TriggerClientEvent('chat:addMessage', src, {
-                        args = { 'SYSTEM', _L('role_promoted', bestRole.label) }
-                    })
-                    SendRolePromotionNotification(xPlayer.getName(), bestRole.label, bestRole.hours)
+                    Bridge.Notify(src, _L('role_promoted', bestRole.label), 'success')
+                    SendRolePromotionNotification(Bridge.GetName(src), bestRole.label, bestRole.hours)
                 end
             end
         )
@@ -389,13 +399,10 @@ function ProcessDailyLogin(src, identifier)
                 local reward = Config.DailyLogin.rewards[rewardDay]
 
                 if reward then
-                    local xPlayer = ESX.GetPlayerFromId(src)
-                    if xPlayer and reward.money then
-                        xPlayer.addMoney(reward.money)
-                        TriggerClientEvent('chat:addMessage', src, {
-                            args = { 'LOGIN', _L('login_reward_claimed', streak, reward.money) }
-                        })
-                        SendLoginRewardNotification(xPlayer.getName(), streak, reward.money)
+                    if reward.money then
+                        Bridge.AddMoney(src, reward.money)
+                        Bridge.Notify(src, _L('login_reward_claimed', streak, reward.money), 'success')
+                        SendLoginRewardNotification(Bridge.GetName(src), streak, reward.money)
                     end
                 end
 
@@ -417,12 +424,12 @@ end
 ---------------------------------------------------------------------------
 -- Server Callback: Get player's own online time
 ---------------------------------------------------------------------------
-ESX.RegisterServerCallback('tayer-uptime:getOnlineTime', function(source, cb)
-    local xPlayer = ESX.GetPlayerFromId(source)
-    if xPlayer then
+Bridge.RegisterServerCallback('tayer-uptime:getOnlineTime', function(source, cb)
+    local identifier = Bridge.GetIdentifier(source)
+    if identifier then
         MySQL.Async.fetchAll(
             'SELECT online_time FROM users_online_time WHERE identifier = @identifier',
-            { ['@identifier'] = xPlayer.identifier },
+            { ['@identifier'] = identifier },
             function(result)
                 cb((result[1] and result[1].online_time) or 0)
             end
@@ -435,7 +442,7 @@ end)
 ---------------------------------------------------------------------------
 -- Server Callback: Get leaderboard data
 ---------------------------------------------------------------------------
-ESX.RegisterServerCallback('tayer-uptime:getLeaderboard', function(source, cb)
+Bridge.RegisterServerCallback('tayer-uptime:getLeaderboard', function(source, cb)
     MySQL.Async.fetchAll(
         'SELECT name, online_time FROM users_online_time ORDER BY online_time DESC LIMIT @limit',
         { ['@limit'] = Config.Leaderboard.maxEntries },
@@ -448,22 +455,23 @@ end)
 ---------------------------------------------------------------------------
 -- Server Callback: Admin get specific player's time
 ---------------------------------------------------------------------------
-ESX.RegisterServerCallback('tayer-uptime:getPlayerTime', function(source, cb, targetId)
+Bridge.RegisterServerCallback('tayer-uptime:getPlayerTime', function(source, cb, targetId)
     if not IsAdmin(source) then
         cb(nil)
         return
     end
 
-    local xTarget = ESX.GetPlayerFromId(targetId)
-    if xTarget then
+    local targetIdentifier = Bridge.GetIdentifier(targetId)
+    local targetName = Bridge.GetName(targetId)
+    if targetIdentifier then
         MySQL.Async.fetchAll(
             'SELECT online_time FROM users_online_time WHERE identifier = @identifier',
-            { ['@identifier'] = xTarget.identifier },
+            { ['@identifier'] = targetIdentifier },
             function(result)
                 if result[1] then
-                    cb({ name = xTarget.getName(), time = result[1].online_time })
+                    cb({ name = targetName, time = result[1].online_time })
                 else
-                    cb({ name = xTarget.getName(), time = 0 })
+                    cb({ name = targetName, time = 0 })
                 end
             end
         )
@@ -475,12 +483,12 @@ end)
 ---------------------------------------------------------------------------
 -- Server Callback: Get daily online time
 ---------------------------------------------------------------------------
-ESX.RegisterServerCallback('tayer-uptime:getDailyTime', function(source, cb)
-    local xPlayer = ESX.GetPlayerFromId(source)
-    if xPlayer then
+Bridge.RegisterServerCallback('tayer-uptime:getDailyTime', function(source, cb)
+    local identifier = Bridge.GetIdentifier(source)
+    if identifier then
         MySQL.Async.fetchAll(
             'SELECT online_time FROM users_online_daily WHERE identifier = @identifier AND date = CURDATE()',
-            { ['@identifier'] = xPlayer.identifier },
+            { ['@identifier'] = identifier },
             function(result)
                 cb((result[1] and result[1].online_time) or 0)
             end
@@ -493,12 +501,12 @@ end)
 ---------------------------------------------------------------------------
 -- Server Callback: Get weekly online time
 ---------------------------------------------------------------------------
-ESX.RegisterServerCallback('tayer-uptime:getWeeklyTime', function(source, cb)
-    local xPlayer = ESX.GetPlayerFromId(source)
-    if xPlayer then
+Bridge.RegisterServerCallback('tayer-uptime:getWeeklyTime', function(source, cb)
+    local identifier = Bridge.GetIdentifier(source)
+    if identifier then
         MySQL.Async.fetchAll(
             'SELECT COALESCE(SUM(online_time), 0) as total FROM users_online_daily WHERE identifier = @identifier AND date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)',
-            { ['@identifier'] = xPlayer.identifier },
+            { ['@identifier'] = identifier },
             function(result)
                 cb((result[1] and result[1].total) or 0)
             end
@@ -511,13 +519,13 @@ end)
 ---------------------------------------------------------------------------
 -- Server Callback: Get monthly online time
 ---------------------------------------------------------------------------
-ESX.RegisterServerCallback('tayer-uptime:getMonthlyTime', function(source, cb)
-    local xPlayer = ESX.GetPlayerFromId(source)
-    if xPlayer then
+Bridge.RegisterServerCallback('tayer-uptime:getMonthlyTime', function(source, cb)
+    local identifier = Bridge.GetIdentifier(source)
+    if identifier then
         local yearMonth = os.date('%Y-%m')
         MySQL.Async.fetchAll(
             'SELECT online_time FROM users_online_monthly WHERE identifier = @identifier AND year_month = @ym',
-            { ['@identifier'] = xPlayer.identifier, ['@ym'] = yearMonth },
+            { ['@identifier'] = identifier, ['@ym'] = yearMonth },
             function(result)
                 cb((result[1] and result[1].online_time) or 0)
             end
@@ -530,11 +538,9 @@ end)
 ---------------------------------------------------------------------------
 -- Server Callback: Get rewards progress
 ---------------------------------------------------------------------------
-ESX.RegisterServerCallback('tayer-uptime:getRewardsProgress', function(source, cb)
-    local xPlayer = ESX.GetPlayerFromId(source)
-    if not xPlayer then cb({ totalTime = 0, claimed = {} }) return end
-
-    local identifier = xPlayer.identifier
+Bridge.RegisterServerCallback('tayer-uptime:getRewardsProgress', function(source, cb)
+    local identifier = Bridge.GetIdentifier(source)
+    if not identifier then cb({ totalTime = 0, claimed = {} }) return end
     MySQL.Async.fetchAll(
         'SELECT online_time FROM users_online_time WHERE identifier = @identifier',
         { ['@identifier'] = identifier },
@@ -558,13 +564,13 @@ end)
 ---------------------------------------------------------------------------
 -- Server Callback: Get login reward status
 ---------------------------------------------------------------------------
-ESX.RegisterServerCallback('tayer-uptime:getLoginStatus', function(source, cb)
-    local xPlayer = ESX.GetPlayerFromId(source)
-    if not xPlayer then cb(nil) return end
+Bridge.RegisterServerCallback('tayer-uptime:getLoginStatus', function(source, cb)
+    local identifier = Bridge.GetIdentifier(source)
+    if not identifier then cb(nil) return end
 
     MySQL.Async.fetchAll(
         'SELECT * FROM users_login_streaks WHERE identifier = @identifier',
-        { ['@identifier'] = xPlayer.identifier },
+        { ['@identifier'] = identifier },
         function(result)
             if result[1] then
                 local row = result[1]
@@ -590,12 +596,11 @@ end)
 ---------------------------------------------------------------------------
 -- Server Callback: Get full dashboard data (for NUI)
 ---------------------------------------------------------------------------
-ESX.RegisterServerCallback('tayer-uptime:getDashboardData', function(source, cb)
-    local xPlayer = ESX.GetPlayerFromId(source)
-    if not xPlayer then cb(nil) return end
+Bridge.RegisterServerCallback('tayer-uptime:getDashboardData', function(source, cb)
+    local identifier = Bridge.GetIdentifier(source)
+    if not identifier then cb(nil) return end
 
-    local identifier = xPlayer.identifier
-    local playerName = xPlayer.getName() or 'Unknown'
+    local playerName = Bridge.GetName(source)
     local today = os.date('%Y-%m-%d')
     local yearMonth = os.date('%Y-%m')
 
@@ -729,16 +734,17 @@ RegisterCommand(Config.Commands.resettime, function(source, args)
         return
     end
 
-    local xTarget = ESX.GetPlayerFromId(targetId)
-    if xTarget then
+    local targetIdentifier = Bridge.GetIdentifier(targetId)
+    local targetName = Bridge.GetName(targetId)
+    if targetIdentifier then
         MySQL.Async.execute(
             'UPDATE users_online_time SET online_time = 0 WHERE identifier = @identifier',
-            { ['@identifier'] = xTarget.identifier },
+            { ['@identifier'] = targetIdentifier },
             function()
                 TriggerClientEvent('chat:addMessage', source, {
-                    args = { 'SYSTEM', _L('admin_reset_success', xTarget.getName(), targetId) }
+                    args = { 'SYSTEM', _L('admin_reset_success', targetName, targetId) }
                 })
-                AuditLog(source, 'reset_time', xTarget.identifier, xTarget.getName(), 'Reset online time to 0')
+                AuditLog(source, 'reset_time', targetIdentifier, targetName, 'Reset online time to 0')
             end
         )
     else
@@ -763,16 +769,17 @@ RegisterCommand('settime', function(source, args)
         return
     end
 
-    local xTarget = ESX.GetPlayerFromId(targetId)
-    if xTarget then
+    local targetIdentifier = Bridge.GetIdentifier(targetId)
+    local targetName = Bridge.GetName(targetId)
+    if targetIdentifier then
         MySQL.Async.execute(
             'INSERT INTO users_online_time (identifier, name, online_time) VALUES (@identifier, @name, @time) ON DUPLICATE KEY UPDATE online_time = @time',
-            { ['@identifier'] = xTarget.identifier, ['@name'] = xTarget.getName(), ['@time'] = minutes },
+            { ['@identifier'] = targetIdentifier, ['@name'] = targetName, ['@time'] = minutes },
             function()
                 TriggerClientEvent('chat:addMessage', source, {
-                    args = { 'SYSTEM', _L('admin_settime_success', xTarget.getName(), targetId, FormatTime(minutes)) }
+                    args = { 'SYSTEM', _L('admin_settime_success', targetName, targetId, FormatTime(minutes)) }
                 })
-                AuditLog(source, 'set_time', xTarget.identifier, xTarget.getName(), 'Set online time to ' .. minutes .. ' minutes')
+                AuditLog(source, 'set_time', targetIdentifier, targetName, 'Set online time to ' .. minutes .. ' minutes')
             end
         )
     else
@@ -797,16 +804,17 @@ RegisterCommand('addtime', function(source, args)
         return
     end
 
-    local xTarget = ESX.GetPlayerFromId(targetId)
-    if xTarget then
+    local targetIdentifier = Bridge.GetIdentifier(targetId)
+    local targetName = Bridge.GetName(targetId)
+    if targetIdentifier then
         MySQL.Async.execute(
             'INSERT INTO users_online_time (identifier, name, online_time) VALUES (@identifier, @name, @time) ON DUPLICATE KEY UPDATE online_time = online_time + @time',
-            { ['@identifier'] = xTarget.identifier, ['@name'] = xTarget.getName(), ['@time'] = minutes },
+            { ['@identifier'] = targetIdentifier, ['@name'] = targetName, ['@time'] = minutes },
             function()
                 TriggerClientEvent('chat:addMessage', source, {
-                    args = { 'SYSTEM', _L('admin_addtime_success', xTarget.getName(), targetId, FormatTime(minutes)) }
+                    args = { 'SYSTEM', _L('admin_addtime_success', targetName, targetId, FormatTime(minutes)) }
                 })
-                AuditLog(source, 'add_time', xTarget.identifier, xTarget.getName(), 'Added ' .. minutes .. ' minutes')
+                AuditLog(source, 'add_time', targetIdentifier, targetName, 'Added ' .. minutes .. ' minutes')
             end
         )
     else
@@ -846,6 +854,71 @@ RegisterCommand('serverstats', function(source, args)
 end, false)
 
 ---------------------------------------------------------------------------
+-- Admin Command: Import txAdmin playtime data
+---------------------------------------------------------------------------
+RegisterCommand('importtxadmin', function(source, args)
+    -- Only allow from server console or admin
+    if source ~= 0 then
+        if not IsAdmin(source) then
+            TriggerClientEvent('chat:addMessage', source, { args = { 'SYSTEM', _L('admin_no_permission') } })
+            return
+        end
+    end
+
+    local filePath = args[1]
+    if not filePath or filePath == '' then
+        local msg = 'Usage: /importtxadmin [path_to_playersDB.json]'
+        if source == 0 then
+            print(msg)
+        else
+            TriggerClientEvent('chat:addMessage', source, { args = { 'SYSTEM', msg } })
+        end
+        return
+    end
+
+    -- Read the txAdmin JSON file
+    local file = io.open(filePath, 'r')
+    if not file then
+        local msg = 'Error: Cannot open file: ' .. filePath
+        if source == 0 then print(msg) else TriggerClientEvent('chat:addMessage', source, { args = { 'SYSTEM', msg } }) end
+        return
+    end
+
+    local content = file:read('*a')
+    file:close()
+
+    local data = json.decode(content)
+    if not data then
+        local msg = 'Error: Invalid JSON in file'
+        if source == 0 then print(msg) else TriggerClientEvent('chat:addMessage', source, { args = { 'SYSTEM', msg } }) end
+        return
+    end
+
+    local imported = 0
+    for _, player in pairs(data) do
+        if player.license and player.playTime and player.playTime > 0 then
+            local identifier = player.license
+            local name = player.displayName or player.name or 'Unknown'
+            local minutes = math.floor(player.playTime) -- txAdmin stores in minutes
+
+            MySQL.Async.execute(
+                'INSERT INTO users_online_time (identifier, name, online_time) VALUES (@identifier, @name, @time) ON DUPLICATE KEY UPDATE online_time = GREATEST(online_time, @time)',
+                { ['@identifier'] = identifier, ['@name'] = name, ['@time'] = minutes }
+            )
+            imported = imported + 1
+        end
+    end
+
+    local msg = ('txAdmin import complete: %d players imported'):format(imported)
+    if source == 0 then
+        print('[tayer-uptime] ' .. msg)
+    else
+        TriggerClientEvent('chat:addMessage', source, { args = { 'SYSTEM', msg } })
+        AuditLog(source, 'txadmin_import', nil, nil, msg)
+    end
+end, false)
+
+---------------------------------------------------------------------------
 -- First-Join Welcome System
 ---------------------------------------------------------------------------
 function ProcessFirstJoin(src, identifier, name)
@@ -857,12 +930,9 @@ function ProcessFirstJoin(src, identifier, name)
         function(result)
             if not result[1] then
                 -- New player! Give welcome bonus
-                local xPlayer = ESX.GetPlayerFromId(src)
-                if xPlayer and Config.FirstJoin.bonusMoney and Config.FirstJoin.bonusMoney > 0 then
-                    xPlayer.addMoney(Config.FirstJoin.bonusMoney)
-                    TriggerClientEvent('chat:addMessage', src, {
-                        args = { 'WELCOME', _L('firstjoin_welcome', Config.FirstJoin.bonusMoney) }
-                    })
+                if Config.FirstJoin.bonusMoney and Config.FirstJoin.bonusMoney > 0 then
+                    Bridge.AddMoney(src, Config.FirstJoin.bonusMoney)
+                    Bridge.Notify(src, _L('firstjoin_welcome', Config.FirstJoin.bonusMoney), 'success')
                 end
                 SendFirstJoinNotification(name)
             end
@@ -928,15 +998,14 @@ Citizen.CreateThread(function()
         local yearMonth = os.date('%Y-%m')
         for _, playerId in ipairs(GetPlayers()) do
             local src = tonumber(playerId)
-            local xPlayer = ESX.GetPlayerFromId(src)
-            if xPlayer then
+            local identifier = Bridge.GetIdentifier(src)
+            if identifier then
                 -- Skip AFK players if AFK detection is enabled
                 if Config.AFK.enabled and PlayerAFK[src] then
                     goto continue
                 end
 
-                local identifier = xPlayer.identifier
-                local name       = xPlayer.getName() or 'Unknown'
+                local name = Bridge.GetName(src)
 
                 PlayerLastUpdate[src] = os.time()
 
@@ -1004,11 +1073,11 @@ end
 ---------------------------------------------------------------------------
 -- Get a player's total online time (minutes)
 exports('GetPlaytime', function(source)
-    local xPlayer = ESX.GetPlayerFromId(source)
-    if not xPlayer then return 0 end
+    local identifier = Bridge.GetIdentifier(source)
+    if not identifier then return 0 end
     local result = MySQL.Sync.fetchAll(
         'SELECT online_time FROM users_online_time WHERE identifier = @identifier',
-        { ['@identifier'] = xPlayer.identifier }
+        { ['@identifier'] = identifier }
     )
     return (result[1] and result[1].online_time) or 0
 end)
@@ -1036,33 +1105,33 @@ end)
 
 -- Get a player's daily online time (minutes)
 exports('GetDailyPlaytime', function(source)
-    local xPlayer = ESX.GetPlayerFromId(source)
-    if not xPlayer then return 0 end
+    local identifier = Bridge.GetIdentifier(source)
+    if not identifier then return 0 end
     local result = MySQL.Sync.fetchAll(
         'SELECT online_time FROM users_online_daily WHERE identifier = @identifier AND date = CURDATE()',
-        { ['@identifier'] = xPlayer.identifier }
+        { ['@identifier'] = identifier }
     )
     return (result[1] and result[1].online_time) or 0
 end)
 
 -- Get a player's weekly online time (minutes)
 exports('GetWeeklyPlaytime', function(source)
-    local xPlayer = ESX.GetPlayerFromId(source)
-    if not xPlayer then return 0 end
+    local identifier = Bridge.GetIdentifier(source)
+    if not identifier then return 0 end
     local result = MySQL.Sync.fetchAll(
         'SELECT COALESCE(SUM(online_time), 0) as total FROM users_online_daily WHERE identifier = @identifier AND date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)',
-        { ['@identifier'] = xPlayer.identifier }
+        { ['@identifier'] = identifier }
     )
     return (result[1] and result[1].total) or 0
 end)
 
 -- Get player's login streak info
 exports('GetLoginStreak', function(source)
-    local xPlayer = ESX.GetPlayerFromId(source)
-    if not xPlayer then return { streak = 0, maxStreak = 0 } end
+    local identifier = Bridge.GetIdentifier(source)
+    if not identifier then return { streak = 0, maxStreak = 0 } end
     local result = MySQL.Sync.fetchAll(
         'SELECT current_streak, max_streak FROM users_login_streaks WHERE identifier = @identifier',
-        { ['@identifier'] = xPlayer.identifier }
+        { ['@identifier'] = identifier }
     )
     if result[1] then
         return { streak = result[1].current_streak, maxStreak = result[1].max_streak }
@@ -1092,37 +1161,33 @@ AddEventHandler('playerConnecting', function(name, setKickReason, deferrals)
     SendConnectNotification(name)
 end)
 
--- Process login rewards when ESX player is fully loaded
-RegisterNetEvent('esx:playerLoaded')
-AddEventHandler('esx:playerLoaded', function(playerId, xPlayer)
-    local src = source
-    if xPlayer then
-        ProcessFirstJoin(src, xPlayer.identifier, xPlayer.getName() or 'Unknown')
-        ProcessDailyLogin(src, xPlayer.identifier)
+-- Process login rewards when player is fully loaded (framework-agnostic)
+Bridge.OnPlayerLoaded(function(src, identifier, name)
+    ProcessFirstJoin(src, identifier, name)
+    ProcessDailyLogin(src, identifier)
 
-        -- Record session start in DB
-        MySQL.Async.execute(
-            'INSERT INTO users_sessions (identifier, name) VALUES (@identifier, @name)',
-            { ['@identifier'] = xPlayer.identifier, ['@name'] = xPlayer.getName() or 'Unknown' }
-        )
+    -- Record session start in DB
+    MySQL.Async.execute(
+        'INSERT INTO users_sessions (identifier, name) VALUES (@identifier, @name)',
+        { ['@identifier'] = identifier, ['@name'] = name }
+    )
 
-        -- Check playtime roles on login
-        MySQL.Async.fetchAll(
-            'SELECT online_time FROM users_online_time WHERE identifier = @identifier',
-            { ['@identifier'] = xPlayer.identifier },
-            function(result)
-                if result[1] then
-                    CheckPlaytimeRoles(src, xPlayer.identifier, result[1].online_time)
-                end
+    -- Check playtime roles on login
+    MySQL.Async.fetchAll(
+        'SELECT online_time FROM users_online_time WHERE identifier = @identifier',
+        { ['@identifier'] = identifier },
+        function(result)
+            if result[1] then
+                CheckPlaytimeRoles(src, identifier, result[1].online_time)
             end
-        )
-    end
+        end
+    )
 end)
 
 AddEventHandler('playerDropped', function(reason)
-    local src      = source
-    local xPlayer  = ESX.GetPlayerFromId(src)
-    local name     = GetPlayerName(src) or 'Unknown'
+    local src        = source
+    local identifier = Bridge.GetIdentifier(src)
+    local name       = Bridge.GetName(src)
 
     -- Calculate session duration
     local sessionMinutes = 0
@@ -1146,16 +1211,15 @@ AddEventHandler('playerDropped', function(reason)
     PlayerAFKSeconds[src] = nil
 
     -- Update session history
-    if xPlayer then
+    if identifier then
         MySQL.Async.execute(
             'UPDATE users_sessions SET disconnected_at = NOW(), duration_minutes = @duration, disconnect_reason = @reason WHERE identifier = @identifier AND disconnected_at IS NULL ORDER BY id DESC LIMIT 1',
-            { ['@identifier'] = xPlayer.identifier, ['@duration'] = sessionMinutes, ['@reason'] = reason }
+            { ['@identifier'] = identifier, ['@duration'] = sessionMinutes, ['@reason'] = reason }
         )
     end
 
     -- Fetch total time and send Discord notification
-    if xPlayer then
-        local identifier = xPlayer.identifier
+    if identifier then
         if unsavedMinutes > 0 then
             MySQL.Async.execute(
                 'INSERT INTO users_online_time (identifier, name, online_time) VALUES (@identifier, @name, @time) ON DUPLICATE KEY UPDATE online_time = online_time + @time, name = @name',

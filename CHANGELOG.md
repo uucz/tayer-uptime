@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-03-13
+
+### Added
+- **Multi-Framework Support** — Auto-detects ESX, QBCore, QBOX, or Standalone mode via `shared/bridge.lua`. No longer locked to ESX.
+- **Framework Bridge System** — All player operations (identifier, money, items, groups, notifications, callbacks) go through `Bridge.*` functions
+- **Rich Reward Types** — Milestones now support `type = 'money'|'item'|'vehicle'` with item name/count and custom callback support
+- **ox_lib Integration** (optional) — When ox_lib is present, uses `lib.notify()` for notifications and `lib.callback` for server callbacks. Falls back gracefully.
+- **txAdmin Data Import** — `/importtxadmin [path]` admin command to import historical playtime from txAdmin's `playersDB.json`
+- **Standalone Mode** — Works with just oxmysql, using license identifier and FiveM ace permissions for admin checks
+- **QBCore/QBOX Support** — Full compatibility including `citizenid` identifiers, `charinfo` names, QB money system, and QB callbacks
+
+### Changed
+- `es_extended` is no longer a hard dependency — only `oxmysql` is required
+- All `ESX.*` calls replaced with `Bridge.*` equivalents throughout server.lua and client.lua
+- `fxmanifest.lua` dependencies simplified to just `oxmysql`
+- Description updated to "Multi-Framework Online Time Tracker"
+- Milestone rewards now support mixed types (money + item in same milestone)
+
+### Removed
+- Direct ESX dependency in `fxmanifest.lua` (auto-detected at runtime instead)
+
 ## [2.2.0] - 2026-03-13
 
 ### Added

@@ -4,7 +4,7 @@
 [![FiveM](https://img.shields.io/badge/FiveM-ESX-orange.svg)](https://fivem.net)
 [![GitHub Stars](https://img.shields.io/github/stars/uucz/tayer-uptime?style=social)](https://github.com/uucz/tayer-uptime)
 
-A feature-rich **FiveM ESX** resource for player online time tracking with server-side AFK detection, milestone rewards, daily login streaks, playtime-gated roles, session history, admin audit logging, and Discord webhook notifications.
+A feature-rich **FiveM** resource for player online time tracking. Supports **ESX, QBCore, QBOX, and Standalone** with auto-detection. Includes NUI dashboard, server-side AFK detection, milestone rewards (money/items/vehicles), daily login streaks, playtime-gated roles, session history, admin audit logging, ox_lib integration, and Discord webhook notifications.
 
 > **中文文档见下方** / Chinese documentation below
 
@@ -33,10 +33,13 @@ A feature-rich **FiveM ESX** resource for player online time tracking with serve
 
 ## Requirements
 
-| Dependency | Link |
-|---|---|
-| ESX Framework | [es_extended](https://github.com/esx-framework/esx-legacy) |
-| Oxmysql | [oxmysql](https://github.com/overextended/oxmysql) |
+| Dependency | Required | Link |
+|---|---|---|
+| Oxmysql | Yes | [oxmysql](https://github.com/overextended/oxmysql) |
+| ESX Framework | Auto-detected | [es_extended](https://github.com/esx-framework/esx-legacy) |
+| QBCore | Auto-detected | [qb-core](https://github.com/qbcore-framework/qb-core) |
+| QBOX | Auto-detected | [qbx_core](https://github.com/Qbox-project/qbx_core) |
+| ox_lib | Optional | [ox_lib](https://github.com/overextended/ox_lib) |
 
 ## Installation
 
@@ -116,6 +119,7 @@ Config.Maintenance = {
 | `/settime [id] [min]` | Set a player's online time (audited) | Admin |
 | `/addtime [id] [min]` | Add time to a player (audited) | Admin |
 | `/serverstats` | View server-wide statistics | Admin |
+| `/importtxadmin [path]` | Import playtime from txAdmin data | Admin/Console |
 
 ## Exports API
 
@@ -170,6 +174,7 @@ tayer-uptime/
 ├── server.lua              # Server-side logic, AFK detection, rewards, roles
 ├── fxmanifest.lua          # Resource manifest
 ├── shared/
+│   ├── bridge.lua          # Multi-framework bridge (ESX/QBCore/QBOX/Standalone)
 │   └── locale.lua          # Locale system
 ├── locales/
 │   ├── zh-CN.lua           # Chinese
@@ -201,7 +206,7 @@ This project is licensed under the [MIT License](LICENSE).
 
 # Tayer Uptime（中文）
 
-一个功能丰富的 **FiveM ESX** 资源，具备服务端 AFK 检测、里程碑奖励、每日登录奖励、时长门控角色、会话历史、管理员审计日志和 Discord Webhook 通知。
+一个功能丰富的 **FiveM** 资源，支持 **ESX、QBCore、QBOX 和 Standalone** 自动检测。具备 NUI 面板、服务端 AFK 检测、里程碑奖励（金钱/物品/载具）、每日登录奖励、时长门控角色、会话历史、管理员审计日志、ox_lib 集成和 Discord Webhook 通知。
 
 ## 功能特点
 
@@ -241,6 +246,7 @@ This project is licensed under the [MIT License](LICENSE).
 | `/settime [ID] [分钟]` | 设置指定玩家时长 (有审计) | 管理员 |
 | `/addtime [ID] [分钟]` | 增加指定玩家时长 (有审计) | 管理员 |
 | `/serverstats` | 查看服务器总体统计 | 管理员 |
+| `/importtxadmin [路径]` | 从 txAdmin 导入时长数据 | 管理员/控制台 |
 
 ## Exports API
 

@@ -1,4 +1,4 @@
-ESX = exports["es_extended"]:getSharedObject()
+-- Bridge is loaded via shared_scripts (shared/bridge.lua)
 
 -- Initialize locale
 _SetLocale(Config.Locale)
@@ -25,9 +25,9 @@ AddEventHandler('tayer-uptime:afkStatus', function(afkState)
     if isAFK ~= afkState then
         isAFK = afkState
         if isAFK then
-            ESX.ShowNotification(_L('afk_detected'))
+            Bridge.Notify(_L('afk_detected'), 'error')
         else
-            ESX.ShowNotification(_L('afk_returned'))
+            Bridge.Notify(_L('afk_returned'), 'success')
         end
     end
 end)
@@ -36,8 +36,8 @@ end)
 -- Command: Check your own online time
 ---------------------------------------------------------------------------
 RegisterCommand(Config.Commands.onlinetime, function()
-    ESX.TriggerServerCallback('tayer-uptime:getOnlineTime', function(onlineTime)
-        ESX.ShowNotification(_L('online_time', FormatTime(onlineTime)))
+    Bridge.TriggerServerCallback('tayer-uptime:getOnlineTime', function(onlineTime)
+        Bridge.Notify(_L('online_time', FormatTime(onlineTime)))
     end)
 end, false)
 
@@ -45,7 +45,7 @@ end, false)
 -- Command: View online time leaderboard
 ---------------------------------------------------------------------------
 RegisterCommand(Config.Commands.toptime, function()
-    ESX.TriggerServerCallback('tayer-uptime:getLeaderboard', function(data)
+    Bridge.TriggerServerCallback('tayer-uptime:getLeaderboard', function(data)
         if not data or #data == 0 then
             TriggerEvent('chat:addMessage', { args = { 'UPTIME', _L('leaderboard_empty') } })
             return
@@ -71,7 +71,7 @@ RegisterCommand(Config.Commands.admintime, function(source, args)
         return
     end
 
-    ESX.TriggerServerCallback('tayer-uptime:getPlayerTime', function(data)
+    Bridge.TriggerServerCallback('tayer-uptime:getPlayerTime', function(data)
         if data then
             TriggerEvent('chat:addMessage', {
                 args = { 'ADMIN', _L('admin_player_time', data.name, targetId, FormatTime(data.time)) }
@@ -86,8 +86,8 @@ end, false)
 -- Command: Check today's online time
 ---------------------------------------------------------------------------
 RegisterCommand(Config.Commands.dailytime, function()
-    ESX.TriggerServerCallback('tayer-uptime:getDailyTime', function(dailyTime)
-        ESX.ShowNotification(_L('daily_time', FormatTime(dailyTime)))
+    Bridge.TriggerServerCallback('tayer-uptime:getDailyTime', function(dailyTime)
+        Bridge.Notify(_L('daily_time', FormatTime(dailyTime)))
     end)
 end, false)
 
@@ -95,8 +95,8 @@ end, false)
 -- Command: Check this week's online time
 ---------------------------------------------------------------------------
 RegisterCommand(Config.Commands.weeklytime, function()
-    ESX.TriggerServerCallback('tayer-uptime:getWeeklyTime', function(weeklyTime)
-        ESX.ShowNotification(_L('weekly_time', FormatTime(weeklyTime)))
+    Bridge.TriggerServerCallback('tayer-uptime:getWeeklyTime', function(weeklyTime)
+        Bridge.Notify(_L('weekly_time', FormatTime(weeklyTime)))
     end)
 end, false)
 
@@ -104,8 +104,8 @@ end, false)
 -- Command: Check this month's online time
 ---------------------------------------------------------------------------
 RegisterCommand(Config.Commands.monthlytime, function()
-    ESX.TriggerServerCallback('tayer-uptime:getMonthlyTime', function(monthlyTime)
-        ESX.ShowNotification(_L('monthly_time', FormatTime(monthlyTime)))
+    Bridge.TriggerServerCallback('tayer-uptime:getMonthlyTime', function(monthlyTime)
+        Bridge.Notify(_L('monthly_time', FormatTime(monthlyTime)))
     end)
 end, false)
 
@@ -114,11 +114,11 @@ end, false)
 ---------------------------------------------------------------------------
 RegisterCommand(Config.Commands.rewards, function()
     if not Config.Rewards.enabled then
-        ESX.ShowNotification(_L('rewards_disabled'))
+        Bridge.Notify(_L('rewards_disabled'), 'error')
         return
     end
 
-    ESX.TriggerServerCallback('tayer-uptime:getRewardsProgress', function(data)
+    Bridge.TriggerServerCallback('tayer-uptime:getRewardsProgress', function(data)
         local totalMinutes = data.totalTime or 0
         local totalHours = totalMinutes / 60
         local claimedSet = {}
@@ -153,11 +153,11 @@ end, false)
 ---------------------------------------------------------------------------
 RegisterCommand(Config.Commands.loginreward, function()
     if not Config.DailyLogin.enabled then
-        ESX.ShowNotification(_L('login_disabled'))
+        Bridge.Notify(_L('login_disabled'), 'error')
         return
     end
 
-    ESX.TriggerServerCallback('tayer-uptime:getLoginStatus', function(data)
+    Bridge.TriggerServerCallback('tayer-uptime:getLoginStatus', function(data)
         if not data then return end
 
         TriggerEvent('chat:addMessage', { args = { '', _L('login_title') } })
@@ -179,7 +179,7 @@ end, false)
 -- Command: Open NUI Dashboard
 ---------------------------------------------------------------------------
 RegisterCommand(Config.Commands.uptime, function()
-    ESX.TriggerServerCallback('tayer-uptime:getDashboardData', function(data)
+    Bridge.TriggerServerCallback('tayer-uptime:getDashboardData', function(data)
         if not data then return end
         SetNuiFocus(true, true)
         SendNUIMessage({

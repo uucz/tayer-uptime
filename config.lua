@@ -43,10 +43,13 @@ Config.AFK = {
 }
 
 -- Milestone Rewards settings
+-- Supported reward types: 'money' (default), 'item', 'vehicle'
+-- For items: add item = 'item_name', count = amount
+-- For vehicles: add callback = function(src, identifier) ... end
+-- Money field is always given if present, regardless of type
 Config.Rewards = {
     enabled = true,
     milestones = {
-        -- { hours = required_hours, money = reward_amount, label = display_name }
         { hours = 1,    money = 5000,   label = '1h'    },
         { hours = 5,    money = 15000,  label = '5h'    },
         { hours = 10,   money = 30000,  label = '10h'   },
@@ -55,6 +58,10 @@ Config.Rewards = {
         { hours = 100,  money = 150000, label = '100h'  },
         { hours = 200,  money = 300000, label = '200h'  },
         { hours = 500,  money = 500000, label = '500h'  },
+        -- Example item reward:
+        -- { hours = 10, type = 'item', item = 'bread', count = 5, money = 10000, label = '10h Item' },
+        -- Example vehicle reward (requires custom callback):
+        -- { hours = 500, type = 'vehicle', callback = function(src, id) ... end, label = '500h Vehicle' },
     },
 }
 
