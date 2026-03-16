@@ -297,6 +297,8 @@ else
     --- @param name string Callback name
     --- @param cb function Response callback
     --- @param ... any Additional arguments
+    local standaloneCallbackHandlers = {}
+
     function Bridge.TriggerServerCallback(name, cb, ...)
         if Bridge.HasOxLib then
             local result = lib.callback.await(name, false, ...)
@@ -308,13 +310,22 @@ else
             local fw = GetFrameworkObj()
             fw.Functions.TriggerCallback(name, cb, ...)
         else
-            -- Standalone: events-based callback
+            -- Standalone: events-based callback (register handler only once per name)
+            if not standaloneCallbackHandlers[name] then
+                standaloneCallbackHandlers[name] = { pending = nil }
+                RegisterNetEvent(name .. ':response')
+                AddEventHandler(name .. ':response', function(result)
+                    local handler = standaloneCallbackHandlers[name]
+                    if handler and handler.pending then
+                        local fn = handler.pending
+                        handler.pending = nil
+                        fn(result)
+                    end
+                end)
+            end
+            standaloneCallbackHandlers[name].pending = cb
             local args = {...}
             TriggerServerEvent(name .. ':request', table.unpack(args))
-            RegisterNetEvent(name .. ':response')
-            AddEventHandler(name .. ':response', function(result)
-                cb(result)
-            end)
         end
     end
 

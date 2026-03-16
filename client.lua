@@ -140,7 +140,7 @@ RegisterCommand(Config.Commands.rewards, function()
                 status = _L('rewards_status_locked', remaining)
             end
             TriggerEvent('chat:addMessage', {
-                args = { '', _L('rewards_entry', milestone.label, milestone.money, status) }
+                args = { '', _L('rewards_entry', milestone.label, milestone.money or 0, status) }
             })
         end
 
