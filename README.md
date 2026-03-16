@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/uucz/tayer-uptime/blob/main/LICENSE)
 [![FiveM](https://img.shields.io/badge/FiveM-Multi--Framework-orange.svg)](https://fivem.net)
 [![GitHub Stars](https://img.shields.io/github/stars/uucz/tayer-uptime?style=social)](https://github.com/uucz/tayer-uptime)
-[![Version](https://img.shields.io/badge/version-2.4.0-blue.svg)](https://github.com/uucz/tayer-uptime/releases)
+[![Version](https://img.shields.io/badge/version-2.4.1-blue.svg)](https://github.com/uucz/tayer-uptime/releases)
 
 A feature-rich **FiveM** player online time tracking resource. Supports **ESX, QBCore, QBOX, and Standalone** with automatic framework detection. Includes NUI dashboard, server-side AFK detection, milestone rewards (money/items/vehicles), daily login streaks, playtime-gated roles, session history, admin audit logging, HTTP REST API, ox_lib integration, activity heatmap, and Discord webhook notifications.
 
@@ -584,7 +584,7 @@ tayer-uptime/
 ├── config.lua              # All configuration options
 ├── client.lua              # Client-side: commands, AFK display, NUI control
 ├── server.lua              # Server-side: tracking, AFK, rewards, roles, sessions
-├── fxmanifest.lua          # Resource manifest (v2.4.0)
+├── fxmanifest.lua          # Resource manifest (v2.4.1)
 ├── shared/
 │   ├── bridge.lua          # Multi-framework bridge (ESX/QBCore/QBOX/Standalone)
 │   └── locale.lua          # Locale/i18n system

@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.1] - 2026-03-16
+
+### Fixed
+- Fix standalone callback duplicate handler registration in `shared/bridge.lua` — each call previously registered a new event handler, causing callbacks to fire multiple times
+- Fix potential nil error in `client.lua` when milestone has no `money` field (e.g., item-only rewards)
+
+### Changed
+- Comprehensive README rewrite with detailed configuration examples, HTTP API response samples, Discord role sync setup guide, Exports usage examples, and full bilingual (EN/CN) documentation
+
 ## [2.4.0] - 2026-03-13
 
 ### Added
