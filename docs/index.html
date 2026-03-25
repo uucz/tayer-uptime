@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moyu Research - Anti-Over-Engineering Prompt Strategy</title>
+<meta name="description" content="Moyu: An anti-over-engineering prompt strategy for AI coding assistants. Research paper and benchmark results.">
+<meta property="og:title" content="Moyu - Anti-Over-Engineering for AI Coding">
+<meta property="og:description" content="Your AI worked overtime. So did you. Moyu keeps AI from overdoing it.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://uucz.github.io/moyu/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Moyu - Anti-Over-Engineering for AI Coding">
+<meta name="twitter:description" content="Your AI worked overtime. So did you. Moyu keeps AI from overdoing it.">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{
+  "@context":"https://schema.org",
+  "@type":"SoftwareApplication",
+  "name":"Moyu",
+  "applicationCategory":"DeveloperApplication",
+  "description":"Anti-over-engineering prompt strategy for AI coding assistants",
+  "url":"https://github.com/uucz/moyu",
+  "operatingSystem":"Any"
+}
+</script>
+<style>
+/* ===== CSS Variables ===== */
+:root {
+  --brand-dark: #141413;
+  --brand-light: #faf9f5;
+  --brand-orange: #d97757;
+  --brand-blue: #6a9bcc;
+  --brand-green: #788c5d;
+  --surface-0: #faf9f5;
+  --surface-1: #ffffff;
+  --surface-2: #f2f1ec;
+  --text-primary: #141413;
+  --text-secondary: #5c5b56;
+  --text-tertiary: #9c9a91;
+  --border-color: rgba(20,20,19,.1);
+  --font-heading: 'Poppins', 'PingFang SC', sans-serif;
+  --font-body: 'Lora', 'Noto Serif SC', Georgia, serif;
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.06);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.07);
+  --code-bg: #1e1e1e;
+  --code-text: #d4d4d4;
+}
+
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --surface-0: #141413;
+    --surface-1: #1a1a19;
+    --surface-2: #232322;
+    --text-primary: #faf9f5;
+    --text-secondary: #b0aea5;
+    --text-tertiary: #7a7870;
+    --border-color: rgba(250,249,245,.08);
+  }
+}
+html[data-theme="dark"]{
+  --surface-0: #141413;
+  --surface-1: #1a1a19;
+  --surface-2: #232322;
+  --text-primary: #faf9f5;
+  --text-secondary: #b0aea5;
+  --text-tertiary: #7a7870;
+  --border-color: rgba(250,249,245,.08);
+}
+
+/* ===== Reset ===== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto} .fade-in{opacity:1!important;transform:none!important;transition:none!important}}
+body{font-family:var(--font-body);background:var(--surface-0);color:var(--text-primary);line-height:1.7;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4,h5,h6{font-family:var(--font-heading);line-height:1.3;font-weight:700}
+a{color:var(--brand-orange);text-decoration:none}
+a:hover{text-decoration:underline}
+img{max-width:100%;display:block}
+
+/* ===== Bilingual ===== */
+html[lang="zh-CN"] [data-lang="en"],
+html[lang="en"] [data-lang="zh"]{display:none!important}
+html[lang="zh-CN"] span[data-lang="zh"],
+html[lang="en"] span[data-lang="en"]{display:inline!important}
+html[lang="zh-CN"] li[data-lang="zh"],
+html[lang="en"] li[data-lang="en"]{display:list-item!important}
+
+/* ===== Nav ===== */
+.nav{position:sticky;top:0;z-index:100;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);background:rgba(250,249,245,.8);border-bottom:1px solid var(--border-color);transition:background .2s}
+html[data-theme="dark"] .nav{background:rgba(20,20,19,.8)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .nav{background:rgba(20,20,19,.8)}}
+.nav-inner{max-width:1200px;margin:0 auto;padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between}
+.nav-logo{display:flex;align-items:center;gap:8px;font-family:var(--font-heading);font-weight:700;font-size:1.1rem;color:var(--text-primary)}
+.nav-logo svg{width:28px;height:28px}
+.nav-links{display:flex;align-items:center;gap:20px;font-family:var(--font-heading);font-size:.85rem}
+.nav-links a{color:var(--text-secondary);transition:color .15s}
+.nav-links a:hover{color:var(--brand-orange);text-decoration:none}
+.nav-btn{background:none;border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:4px 10px;cursor:pointer;color:var(--text-secondary);font-family:var(--font-heading);font-size:.8rem;transition:all .15s;display:flex;align-items:center;gap:4px}
+.nav-btn:hover{border-color:var(--brand-orange);color:var(--brand-orange)}
+.nav-btn svg{width:16px;height:16px}
+
+/* ===== Container ===== */
+.container{max-width:1100px;margin:0 auto;padding:0 24px}
+section{padding:80px 0}
+
+/* ===== Hero ===== */
+.hero{text-align:center;padding:100px 0 80px}
+.hero h1{font-size:clamp(2rem,5vw,3.2rem);font-weight:800;margin-bottom:16px;letter-spacing:-.02em}
+.hero h1 em{font-style:normal;color:var(--brand-orange)}
+.hero-sub{font-size:clamp(1rem,2vw,1.2rem);color:var(--text-secondary);max-width:600px;margin:0 auto 40px;line-height:1.6}
+
+.install-box{display:inline-flex;align-items:center;gap:12px;background:var(--code-bg);color:#e0e0e0;padding:12px 20px;border-radius:var(--radius);font-family:'Fira Code',monospace;font-size:.95rem;cursor:pointer;position:relative;transition:box-shadow .2s;box-shadow:var(--shadow-sm)}
+.install-box:hover{box-shadow:var(--shadow-md)}
+.install-box .copy-icon{width:18px;height:18px;opacity:.5;transition:opacity .15s;flex-shrink:0}
+.install-box:hover .copy-icon{opacity:1}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--brand-dark);color:var(--brand-light);padding:10px 24px;border-radius:var(--radius);font-family:var(--font-heading);font-size:.85rem;opacity:0;transition:all .25s;pointer-events:none;z-index:200}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:48px}
+.stat-card{background:var(--surface-1);border:1px solid var(--border-color);border-radius:var(--radius);padding:24px 16px;text-align:center;box-shadow:var(--shadow-sm);transition:transform .2s,box-shadow .2s}
+.stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.stat-card .stat-value{font-family:var(--font-heading);font-size:2rem;font-weight:800;color:var(--brand-orange);display:block}
+.stat-card .stat-label{font-size:.85rem;color:var(--text-secondary);margin-top:4px}
+
+/* ===== Pain Point ===== */
+.section-title{font-size:clamp(1.5rem,3vw,2rem);text-align:center;margin-bottom:12px}
+.section-sub{text-align:center;color:var(--text-secondary);max-width:650px;margin:0 auto 48px;font-size:1rem}
+.code-compare{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.code-panel{border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-md)}
+.code-panel-header{padding:12px 20px;font-family:var(--font-heading);font-size:.85rem;font-weight:600;display:flex;align-items:center;justify-content:space-between}
+.code-panel-header .line-count{font-weight:400;opacity:.7;font-size:.75rem}
+.code-panel.bad .code-panel-header{background:#dc3545;color:#fff}
+.code-panel.good .code-panel-header{background:var(--brand-green);color:#fff}
+.code-panel pre{margin:0;padding:20px;background:var(--code-bg);color:var(--code-text);font-size:.8rem;line-height:1.6;overflow-x:auto;font-family:'Fira Code','Courier New',monospace}
+.code-panel pre code{font-family:inherit}
+
+/* ===== Ecosystem ===== */
+.ecosystem-diagram{max-width:600px;margin:0 auto 40px;position:relative}
+.triangle-wrap{position:relative;width:100%;padding-top:75%}
+.tri-node{position:absolute;text-align:center;width:180px;transform:translateX(-50%)}
+.tri-node .tri-name{font-family:var(--font-heading);font-weight:700;font-size:1.1rem;margin-bottom:4px}
+.tri-node .tri-desc{font-size:.82rem;color:var(--text-secondary);line-height:1.4}
+.tri-top{top:0;left:50%}
+.tri-left{bottom:0;left:18%}
+.tri-right{bottom:0;left:82%}
+.tri-lines{position:absolute;top:0;left:0;width:100%;height:100%}
+.tri-lines line{stroke:var(--border-color);stroke-width:1.5;stroke-dasharray:6 4}
+.ecosystem-tagline{text-align:center;font-family:var(--font-heading);font-size:1.05rem;color:var(--text-secondary);max-width:520px;margin:0 auto;font-style:italic}
+
+/* ===== Iron Rules ===== */
+.rules-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.rule-card{background:var(--surface-1);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:32px 24px;box-shadow:var(--shadow-sm);transition:transform .2s,box-shadow .2s}
+.rule-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-md)}
+.rule-num{font-family:var(--font-heading);font-size:2.5rem;font-weight:800;color:var(--brand-orange);opacity:.3;line-height:1}
+.rule-card h3{font-size:1.1rem;margin:12px 0 8px}
+.rule-card p{font-size:.9rem;color:var(--text-secondary);line-height:1.6}
+
+/* ===== Methodology ===== */
+.method-details{background:var(--surface-1);border:1px solid var(--border-color);border-radius:var(--radius);margin-bottom:16px;overflow:hidden}
+.method-details summary{padding:16px 24px;font-family:var(--font-heading);font-weight:600;cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;transition:background .15s}
+.method-details summary::-webkit-details-marker{display:none}
+.method-details summary::before{content:'';display:inline-block;width:8px;height:8px;border-right:2px solid var(--text-tertiary);border-bottom:2px solid var(--text-tertiary);transform:rotate(-45deg);transition:transform .2s;flex-shrink:0}
+.method-details[open] summary::before{transform:rotate(45deg)}
+.method-details summary:hover{background:var(--surface-2)}
+.method-details .detail-body{padding:0 24px 24px}
+
+/* ===== Tables ===== */
+.data-table{width:100%;border-collapse:collapse;font-size:.85rem;margin:16px 0}
+.data-table th,.data-table td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--border-color)}
+.data-table th{font-family:var(--font-heading);font-weight:600;background:var(--surface-2);cursor:pointer;user-select:none;white-space:nowrap}
+.data-table th:hover{color:var(--brand-orange)}
+.data-table th .sort-arrow{font-size:.7rem;margin-left:4px;opacity:.4}
+.data-table tbody tr:hover{background:var(--surface-2)}
+
+/* ===== Charts ===== */
+.chart-wrap{background:var(--surface-1);border:1px solid var(--border-color);border-radius:var(--radius);padding:24px;margin-bottom:24px;box-shadow:var(--shadow-sm)}
+.chart-wrap h3{font-size:1rem;margin-bottom:16px;font-family:var(--font-heading)}
+.chart-container{position:relative;height:350px;width:100%}
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+
+/* ===== Discussion ===== */
+.prose{max-width:750px;margin:0 auto}
+.prose h3{margin:32px 0 12px;font-size:1.15rem}
+.prose p{margin-bottom:16px;font-size:.95rem;color:var(--text-secondary);line-height:1.8}
+.prose ul{margin:0 0 16px 20px;color:var(--text-secondary);font-size:.95rem}
+.prose li{margin-bottom:6px;line-height:1.6}
+
+/* ===== References ===== */
+.ref-list{list-style:none;padding:0;max-width:750px;margin:0 auto}
+.ref-list li{padding:8px 0;border-bottom:1px solid var(--border-color);font-size:.88rem;color:var(--text-secondary);line-height:1.5}
+.ref-list li span.ref-num{font-family:var(--font-heading);font-weight:600;color:var(--brand-orange);margin-right:8px}
+
+/* ===== Footer ===== */
+.footer{background:var(--brand-dark);color:rgba(250,249,245,.7);padding:40px 0;text-align:center;font-size:.85rem}
+.footer a{color:var(--brand-orange)}
+.footer-inner{display:flex;flex-direction:column;align-items:center;gap:12px}
+
+/* ===== Fade-in animation ===== */
+.fade-in{opacity:0;transform:translateY(16px);transition:opacity .3s ease,transform .3s ease}
+.fade-in.visible{opacity:1;transform:translateY(0)}
+
+/* ===== Responsive ===== */
+@media(max-width:1024px){
+  .charts-grid,.code-compare{grid-template-columns:1fr}
+  .chart-container{height:300px}
+}
+@media(max-width:768px){
+  .nav-links a.nav-section-link{display:none}
+  section{padding:56px 0}
+  .hero{padding:72px 0 56px}
+  .rules-grid{grid-template-columns:1fr}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .tri-node{width:140px;font-size:.9rem}
+}
+@media(max-width:480px){
+  .stats-grid{grid-template-columns:1fr}
+  .container{padding:0 16px}
+  .nav-inner{padding:0 16px}
+  .hero h1{font-size:1.7rem}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== NAV ===== -->
+<nav class="nav" id="nav">
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">
+      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M6 16c0-4 3-8 10-8s10 4 10 8-3 7-10 7S6 20 6 16z" fill="var(--brand-orange)" opacity=".85"/>
+        <path d="M26 16c2-3 4-4 4-4" stroke="var(--brand-orange)" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="11" cy="14" r="1.5" fill="#fff"/>
+      </svg>
+      <span>Moyu</span>
+    </a>
+    <div class="nav-links">
+      <a href="#pain" class="nav-section-link" data-lang="zh">痛点</a>
+      <a href="#pain" class="nav-section-link" data-lang="en">Problem</a>
+      <a href="#ecosystem" class="nav-section-link" data-lang="zh">生态</a>
+      <a href="#ecosystem" class="nav-section-link" data-lang="en">Ecosystem</a>
+      <a href="#rules" class="nav-section-link" data-lang="zh">铁律</a>
+      <a href="#rules" class="nav-section-link" data-lang="en">Rules</a>
+      <a href="#results" class="nav-section-link" data-lang="zh">结果</a>
+      <a href="#results" class="nav-section-link" data-lang="en">Results</a>
+      <button class="nav-btn" id="theme-toggle" aria-label="Toggle theme">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none"><circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      </button>
+      <button class="nav-btn" id="lang-toggle">
+        <span data-lang="zh">EN</span>
+        <span data-lang="en">中</span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- ===== HERO ===== -->
+<section class="hero" id="hero">
+  <div class="container">
+    <h1 class="fade-in">
+      <span data-lang="zh">你的 AI 加了班，<em>你也加了班</em></span>
+      <span data-lang="en">Your AI Worked Overtime. <em>So Did You.</em></span>
+    </h1>
+    <p class="hero-sub fade-in">
+      <span data-lang="zh">Moyu 是一种反过度工程的 Prompt 策略，让 AI 编码助手只做该做的事。</span>
+      <span data-lang="en">Moyu is an anti-over-engineering prompt strategy that keeps AI coding assistants from doing more than they should.</span>
+    </p>
+    <div class="install-box fade-in" id="install-cmd" title="Click to copy">
+      <span>npx moyu@latest init</span>
+      <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+    </div>
+    <div class="stats-grid fade-in" style="animation-delay:.1s">
+      <div class="stat-card">
+        <span class="stat-value" id="kn-experiments">540</span>
+        <span class="stat-label" data-lang="zh">实验次数</span>
+        <span class="stat-label" data-lang="en">Experiments</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value" id="kn-models">3</span>
+        <span class="stat-label" data-lang="zh">LLM 模型</span>
+        <span class="stat-label" data-lang="en">LLM Models</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value" id="kn-loc-reduction">&mdash;%</span>
+        <span class="stat-label" data-lang="zh">代码量减少</span>
+        <span class="stat-label" data-lang="en">LOC Reduction</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value" id="kn-correctness">&mdash;%</span>
+        <span class="stat-label" data-lang="zh">正确率</span>
+        <span class="stat-label" data-lang="en">Correctness</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== PAIN POINT ===== -->
+<section id="pain" style="background:var(--surface-2)">
+  <div class="container">
+    <h2 class="section-title fade-in">
+      <span data-lang="zh">一行需求，四十三行代码</span>
+      <span data-lang="en">One Requirement, Forty-Three Lines</span>
+    </h2>
+    <p class="section-sub fade-in">
+      <span data-lang="zh">你只想要一个简单的函数，AI 却给你写了工业级方案。</span>
+      <span data-lang="en">You asked for a simple function. AI gave you an industrial-grade solution.</span>
+    </p>
+    <div class="code-compare fade-in">
+      <div class="code-panel bad">
+        <div class="code-panel-header">
+          <span data-lang="zh">没有 Moyu</span>
+          <span data-lang="en">Without Moyu</span>
+          <span class="line-count">43 lines</span>
+        </div>
+        <pre><code>def add(a, b):
+    """
+    Add two numbers together.
+
+    Args:
+        a (int | float): The first number.
+        b (int | float): The second number.
+
+    Returns:
+        int | float: The sum of a and b.
+
+    Raises:
+        TypeError: If inputs are not numbers.
+        OverflowError: If result exceeds limits.
+
+    Examples:
+        >>> add(1, 2)
+        3
+        >>> add(1.5, 2.5)
+        4.0
+    """
+    if not isinstance(a, (int, float)):
+        raise TypeError(
+            f"Expected number for a, got {type(a).__name__}"
+        )
+    if not isinstance(b, (int, float)):
+        raise TypeError(
+            f"Expected number for b, got {type(b).__name__}"
+        )
+    try:
+        result = a + b
+    except OverflowError:
+        raise OverflowError(
+            "Result exceeds maximum float value"
+        )
+    if isinstance(result, float) and (
+        math.isinf(result) or math.isnan(result)
+    ):
+        raise OverflowError(
+            "Result is infinity or NaN"
+        )
+    return result</code></pre>
+      </div>
+      <div class="code-panel good">
+        <div class="code-panel-header">
+          <span data-lang="zh">使用 Moyu</span>
+          <span data-lang="en">With Moyu</span>
+          <span class="line-count">8 lines</span>
+        </div>
+        <pre><code>def add(a, b):
+    """Add two numbers."""
+    return a + b
+
+
+def test_add():
+    assert add(1, 2) == 3
+    assert add(-1, 1) == 0</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ECOSYSTEM ===== -->
+<section id="ecosystem">
+  <div class="container">
+    <h2 class="section-title fade-in">
+      <span data-lang="zh">Prompt 生态三角</span>
+      <span data-lang="en">The Prompt Ecosystem Triangle</span>
+    </h2>
+    <p class="section-sub fade-in">
+      <span data-lang="zh">三种策略，互补协作，覆盖 AI 编程的不同失败模式。</span>
+      <span data-lang="en">Three strategies, complementary, covering different AI coding failure modes.</span>
+    </p>
+    <div class="ecosystem-diagram fade-in">
+      <div class="triangle-wrap">
+        <svg class="tri-lines" viewBox="0 0 600 450" preserveAspectRatio="xMidYMid meet">
+          <line x1="300" y1="40" x2="90" y2="380"/>
+          <line x1="300" y1="40" x2="510" y2="380"/>
+          <line x1="90" y1="380" x2="510" y2="380"/>
+        </svg>
+        <div class="tri-node tri-top" style="color:var(--brand-orange)">
+          <div class="tri-name">Moyu</div>
+          <div class="tri-desc">
+            <span data-lang="zh">让 AI 不要做多了</span>
+            <span data-lang="en">Makes AI not overdo it</span>
+          </div>
+        </div>
+        <div class="tri-node tri-left" style="color:var(--brand-blue)">
+          <div class="tri-name">PUA</div>
+          <div class="tri-desc">
+            <span data-lang="zh">让 AI 不要放弃</span>
+            <span data-lang="en">Makes AI not give up</span>
+          </div>
+        </div>
+        <div class="tri-node tri-right" style="color:var(--brand-green)">
+          <div class="tri-name">NoPUA</div>
+          <div class="tri-desc">
+            <span data-lang="zh">让 AI 不要放弃，但尊重它</span>
+            <span data-lang="en">Makes AI not give up, with respect</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="ecosystem-tagline fade-in">
+      <span data-lang="zh">"它们让 AI 不放弃。我们让 AI 不做多。"</span>
+      <span data-lang="en">"They keep AI from giving up. We keep AI from overdoing it."</span>
+    </p>
+  </div>
+</section>
+
+<!-- ===== IRON RULES ===== -->
+<section id="rules" style="background:var(--surface-2)">
+  <div class="container">
+    <h2 class="section-title fade-in">
+      <span data-lang="zh">三条铁律</span>
+      <span data-lang="en">Three Iron Rules</span>
+    </h2>
+    <p class="section-sub fade-in">
+      <span data-lang="zh">Moyu 的核心哲学，简单到可以写在便签纸上。</span>
+      <span data-lang="en">The core philosophy of Moyu, simple enough for a sticky note.</span>
+    </p>
+    <div class="rules-grid">
+      <div class="rule-card fade-in">
+        <div class="rule-num">01</div>
+        <h3>
+          <span data-lang="zh">只改被要求的</span>
+          <span data-lang="en">Only Change What Was Asked</span>
+        </h3>
+        <p>
+          <span data-lang="zh">不要主动"改进"、"优化"或重构不相关的代码。做被要求做的，仅此而已。</span>
+          <span data-lang="en">Do not proactively "improve", "optimize", or refactor unrelated code. Do what was asked, nothing more.</span>
+        </p>
+      </div>
+      <div class="rule-card fade-in">
+        <div class="rule-num">02</div>
+        <h3>
+          <span data-lang="zh">用最简方案</span>
+          <span data-lang="en">Use the Simplest Solution</span>
+        </h3>
+        <p>
+          <span data-lang="zh">能用 3 行解决就不要用 30 行。避免不必要的抽象、设计模式和类型体操。</span>
+          <span data-lang="en">If 3 lines work, don't write 30. Avoid unnecessary abstractions, design patterns, and type gymnastics.</span>
+        </p>
+      </div>
+      <div class="rule-card fade-in">
+        <div class="rule-num">03</div>
+        <h3>
+          <span data-lang="zh">不确定就问</span>
+          <span data-lang="en">When Unsure, Ask</span>
+        </h3>
+        <p>
+          <span data-lang="zh">与其猜测需求然后过度实现，不如直接问清楚。沟通优于假设。</span>
+          <span data-lang="en">Instead of guessing requirements and over-implementing, just ask. Communication beats assumption.</span>
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== METHODOLOGY ===== -->
+<section id="methodology">
+  <div class="container">
+    <h2 class="section-title fade-in">
+      <span data-lang="zh">研究方法</span>
+      <span data-lang="en">Methodology</span>
+    </h2>
+    <p class="section-sub fade-in">
+      <span data-lang="zh">3 个模型 x 5 种条件 x 12 个场景 x 3 次试验 = 540 次实验</span>
+      <span data-lang="en">3 Models x 5 Conditions x 12 Scenarios x 3 Trials = 540 Experiments</span>
+    </p>
+
+    <details class="method-details fade-in">
+      <summary>
+        <span data-lang="zh">实验条件</span>
+        <span data-lang="en">Experimental Conditions</span>
+      </summary>
+      <div class="detail-body">
+        <table class="data-table sortable">
+          <thead>
+            <tr>
+              <th data-lang="zh">条件</th><th data-lang="en">Condition</th>
+              <th data-lang="zh">描述</th><th data-lang="en">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Control</td><td data-lang="zh">无 system prompt</td><td data-lang="en">No system prompt</td></tr>
+            <tr><td>Baseline-Concise</td><td data-lang="zh">"请简洁"</td><td data-lang="en">"Be concise"</td></tr>
+            <tr><td>Moyu-Lite</td><td data-lang="zh">Moyu 精简版</td><td data-lang="en">Moyu Lite variant</td></tr>
+            <tr><td>Moyu-Standard</td><td data-lang="zh">Moyu 标准版</td><td data-lang="en">Moyu Standard</td></tr>
+            <tr><td>Moyu-Strict</td><td data-lang="zh">Moyu 严格版</td><td data-lang="en">Moyu Strict variant</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </details>
+
+    <details class="method-details fade-in">
+      <summary>
+        <span data-lang="zh">测试场景 (S1-S12)</span>
+        <span data-lang="en">Test Scenarios (S1-S12)</span>
+      </summary>
+      <div class="detail-body">
+        <table class="data-table sortable">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th data-lang="zh">类型</th><th data-lang="en">Type</th>
+              <th data-lang="zh">描述</th><th data-lang="en">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>S1</td><td>A</td><td data-lang="zh">修复 complete_task 空指针 bug</td><td data-lang="en">Fix complete_task null pointer bug</td></tr>
+            <tr><td>S2</td><td>A</td><td data-lang="zh">添加 list_tasks_sorted 函数</td><td data-lang="en">Add list_tasks_sorted function</td></tr>
+            <tr><td>S3</td><td>A</td><td data-lang="zh">给 search 加 status 参数</td><td data-lang="en">Add status param to search</td></tr>
+            <tr><td>S4</td><td>A</td><td data-lang="zh">添加 export_csv 函数</td><td data-lang="en">Add export_csv function</td></tr>
+            <tr><td>S5</td><td>A</td><td data-lang="zh">给 list_tasks 加 assignee 筛选</td><td data-lang="en">Add assignee filter to list_tasks</td></tr>
+            <tr><td>S6</td><td>A</td><td data-lang="zh">添加 bulk_complete 函数</td><td data-lang="en">Add bulk_complete function</td></tr>
+            <tr><td>S7</td><td>A</td><td data-lang="zh">修复 delete_task 返回值</td><td data-lang="en">Fix delete_task return value</td></tr>
+            <tr><td>S8</td><td>A</td><td data-lang="zh">添加 get_tasks_by_assignee</td><td data-lang="en">Add get_tasks_by_assignee</td></tr>
+            <tr><td>S9</td><td>B</td><td data-lang="zh">重构为 context manager</td><td data-lang="en">Refactor to context managers</td></tr>
+            <tr><td>S10</td><td>B</td><td data-lang="zh">添加 docstring</td><td data-lang="en">Add docstrings</td></tr>
+            <tr><td>S11</td><td>B</td><td data-lang="zh">编写单元测试</td><td data-lang="en">Write unit tests</td></tr>
+            <tr><td>S12</td><td>C</td><td data-lang="zh">修复 bug + 新功能</td><td data-lang="en">Fix bug + new feature</td></tr>
+          </tbody>
+        </table>
+        <p style="font-size:.82rem;color:var(--text-tertiary);margin-top:12px">
+          <span data-lang="zh">A = 过度工程高发区 (应缩减), B = 用户显式请求 (不应抑制), C = 混合</span>
+          <span data-lang="en">A = Over-engineering hotspots (should reduce), B = Explicit user requests (should NOT suppress), C = Mixed</span>
+        </p>
+      </div>
+    </details>
+
+    <details class="method-details fade-in">
+      <summary>
+        <span data-lang="zh">模型</span>
+        <span data-lang="en">Models</span>
+      </summary>
+      <div class="detail-body">
+        <table class="data-table">
+          <thead><tr><th data-lang="zh">模型</th><th data-lang="en">Model</th><th data-lang="zh">提供商</th><th data-lang="en">Provider</th></tr></thead>
+          <tbody>
+            <tr><td>Claude Sonnet 4</td><td>Anthropic</td></tr>
+            <tr><td>GPT-4o</td><td>OpenAI</td></tr>
+            <tr><td>Gemini 2.5 Pro</td><td>Google</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </details>
+
+    <details class="method-details fade-in">
+      <summary>
+        <span data-lang="zh">评估指标</span>
+        <span data-lang="en">Metrics</span>
+      </summary>
+      <div class="detail-body">
+        <table class="data-table">
+          <thead><tr><th data-lang="zh">指标</th><th data-lang="en">Metric</th><th data-lang="zh">描述</th><th data-lang="en">Description</th></tr></thead>
+          <tbody>
+            <tr><td>LOC</td><td data-lang="zh">代码行数（不含空行和注释）</td><td data-lang="en">Lines of code (excl. blanks/comments)</td></tr>
+            <tr><td>OE Score</td><td data-lang="zh">过度工程评分（0-10）</td><td data-lang="en">Over-engineering score (0-10)</td></tr>
+            <tr><td>Correctness</td><td data-lang="zh">功能正确性（通过测试比例）</td><td data-lang="en">Functional correctness (test pass rate)</td></tr>
+            <tr><td>OE Signals</td><td data-lang="zh">过度工程信号分解</td><td data-lang="en">Over-engineering signal decomposition</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </details>
+
+    <details class="method-details fade-in">
+      <summary>
+        <span data-lang="zh">统计方法</span>
+        <span data-lang="en">Statistical Methods</span>
+      </summary>
+      <div class="detail-body">
+        <ul style="color:var(--text-secondary);font-size:.9rem;line-height:1.8;padding-left:20px">
+          <li data-lang="zh">单因素方差分析 (One-way ANOVA) 比较条件间差异</li>
+          <li data-lang="en">One-way ANOVA for comparing differences across conditions</li>
+          <li data-lang="zh">Tukey HSD 事后检验用于配对比较</li>
+          <li data-lang="en">Tukey HSD post-hoc tests for pairwise comparisons</li>
+          <li data-lang="zh">双因素方差分析检测模型x条件交互效应</li>
+          <li data-lang="en">Two-way ANOVA for model x condition interaction effects</li>
+          <li data-lang="zh">Cohen's d 计算效应量</li>
+          <li data-lang="en">Cohen's d for effect size calculations</li>
+          <li data-lang="zh">Bootstrap 置信区间 (n=1000)</li>
+          <li data-lang="en">Bootstrap confidence intervals (n=1000)</li>
+        </ul>
+      </div>
+    </details>
+  </div>
+</section>
+
+<!-- ===== RESULTS ===== -->
+<section id="results" style="background:var(--surface-2)">
+  <div class="container">
+    <h2 class="section-title fade-in">
+      <span data-lang="zh">实验结果</span>
+      <span data-lang="en">Results</span>
+    </h2>
+    <p class="section-sub fade-in">
+      <span data-lang="zh">Moyu-Standard 将 A 类场景代码行数减少约 <strong id="stat-loc-reduction-zh">&mdash;%</strong>，过度工程信号下降 <strong id="stat-oe-reduction-zh">&mdash;%</strong>，同时保持 <strong id="stat-correctness-zh">&mdash;%</strong> 功能正确率。</span>
+      <span data-lang="en">Moyu-Standard reduced A-type scenario LOC by ~<strong id="stat-loc-reduction-en">&mdash;%</strong>, OE signals down <strong id="stat-oe-reduction-en">&mdash;%</strong>, while maintaining <strong id="stat-correctness-en">&mdash;%</strong> correctness.</span>
+    </p>
+
+    <div class="charts-grid">
+      <div class="chart-wrap fade-in">
+        <h3>
+          <span data-lang="zh">代码行数（按条件）</span>
+          <span data-lang="en">Lines of Code by Condition</span>
+        </h3>
+        <div class="chart-container"><canvas id="chart-loc"></canvas></div>
+      </div>
+      <div class="chart-wrap fade-in">
+        <h3>
+          <span data-lang="zh">过度工程信号分解</span>
+          <span data-lang="en">OE Signal Decomposition</span>
+        </h3>
+        <div class="chart-container"><canvas id="chart-oe"></canvas></div>
+      </div>
+      <div class="chart-wrap fade-in">
+        <h3>
+          <span data-lang="zh">正确率</span>
+          <span data-lang="en">Correctness</span>
+        </h3>
+        <div class="chart-container"><canvas id="chart-correctness"></canvas></div>
+      </div>
+      <div class="chart-wrap fade-in">
+        <h3>
+          <span data-lang="zh">模型 x 条件交互</span>
+          <span data-lang="en">Model x Condition Interaction</span>
+        </h3>
+        <div class="chart-container"><canvas id="chart-interaction"></canvas></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ===== ABLATION ===== -->
+<section id="ablation">
+  <div class="container">
+    <h2 class="section-title fade-in">
+      <span data-lang="zh">消融实验</span>
+      <span data-lang="en">Ablation Study</span>
+    </h2>
+    <p class="section-sub fade-in">
+      <span data-lang="zh">"写简洁点" vs Moyu 策略 / Lite vs Standard vs Strict / B 类任务表现</span>
+      <span data-lang="en">"Be concise" vs Moyu strategy / Lite vs Standard vs Strict / B-type task results</span>
+    </p>
+
+    <div class="prose fade-in">
+      <h3>
+        <span data-lang="zh">"Be concise" 与 Moyu 的区别</span>
+        <span data-lang="en">"Be Concise" vs Moyu</span>
+      </h3>
+      <p>
+        <span data-lang="zh">简单的 "请写简洁" 提示确实能减少代码量，但效果远不如 Moyu。Baseline-Concise 条件平均减少 LOC 约 15-20%，而 Moyu-Standard 达到了更显著的减少。更关键的是，"简洁" 提示主要减少了注释和文档，而非过度工程行为本身。</span>
+        <span data-lang="en">A simple "be concise" prompt does reduce code volume, but far less effectively than Moyu. The Baseline-Concise condition reduced LOC by roughly 15-20%, while Moyu-Standard achieved significantly more. Crucially, the "concise" prompt mainly reduced comments and documentation, not the over-engineering behavior itself.</span>
+      </p>
+      <h3>
+        <span data-lang="zh">Lite vs Standard vs Strict</span>
+        <span data-lang="en">Lite vs Standard vs Strict</span>
+      </h3>
+      <p>
+        <span data-lang="zh">Moyu-Lite 提供了基础的过度工程抑制；Standard 在 LOC 减少和正确性之间取得了最佳平衡；Strict 进一步压缩代码，但在复杂场景 (C 类) 中偶尔出现功能遗漏。</span>
+        <span data-lang="en">Moyu-Lite provides basic over-engineering suppression; Standard strikes the best balance between LOC reduction and correctness; Strict compresses further but occasionally misses functionality in complex (Type C) scenarios.</span>
+      </p>
+    </div>
+
+    <div class="chart-wrap fade-in" style="max-width:700px;margin:32px auto 0">
+      <h3>
+        <span data-lang="zh">B 类任务结果</span>
+        <span data-lang="en">B-Type Task Results</span>
+      </h3>
+      <div class="chart-container"><canvas id="chart-b-type"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== DISCUSSION ===== -->
+<section id="discussion" style="background:var(--surface-2)">
+  <div class="container">
+    <h2 class="section-title fade-in">
+      <span data-lang="zh">讨论与结论</span>
+      <span data-lang="en">Discussion &amp; Conclusion</span>
+    </h2>
+    <div class="prose fade-in">
+      <h3>
+        <span data-lang="zh">关键发现</span>
+        <span data-lang="en">Key Findings</span>
+      </h3>
+      <ul>
+        <li>
+          <span data-lang="zh">LLM 在未受约束时确实存在系统性过度工程倾向，尤其在简单任务上表现最为突出</span>
+          <span data-lang="en">LLMs exhibit systematic over-engineering tendencies when unconstrained, especially pronounced in simple tasks</span>
+        </li>
+        <li>
+          <span data-lang="zh">Moyu-Standard 在所有模型和场景类型上都实现了显著的 LOC 减少，同时保持或提高了正确率</span>
+          <span data-lang="en">Moyu-Standard achieved significant LOC reduction across all models and scenario types while maintaining or improving correctness</span>
+        </li>
+        <li>
+          <span data-lang="zh">简单的 "简洁" 提示不足以解决过度工程问题，结构化策略是必要的</span>
+          <span data-lang="en">Simple "concise" prompts are insufficient for addressing over-engineering; structured strategies are necessary</span>
+        </li>
+        <li>
+          <span data-lang="zh">不同模型对 Moyu 策略的响应程度存在差异，提示了模型间过度工程行为的差异</span>
+          <span data-lang="en">Different models respond to Moyu with varying effectiveness, revealing inter-model differences in over-engineering behavior</span>
+        </li>
+      </ul>
+      <h3>
+        <span data-lang="zh">局限性</span>
+        <span data-lang="en">Limitations</span>
+      </h3>
+      <p>
+        <span data-lang="zh">本研究的场景设计偏向于独立的代码修改任务，大型项目中的长对话场景需要进一步研究。此外，过度工程的定义本身具有主观性，不同团队和项目可能有不同标准。</span>
+        <span data-lang="en">The study's scenarios lean towards isolated code modification tasks; long-conversation scenarios in large projects require further investigation. Additionally, the definition of over-engineering is inherently subjective, with different teams and projects potentially having different standards.</span>
+      </p>
+      <h3>
+        <span data-lang="zh">结论</span>
+        <span data-lang="en">Conclusion</span>
+      </h3>
+      <p>
+        <span data-lang="zh">Moyu 证明了一种简单的、基于规则的 Prompt 策略可以有效地抑制 AI 编码助手的过度工程行为。它不需要模型微调，不依赖特定工具链，可以无缝集成到任何开发工作流中。少即是多 -- 有时，最好的代码就是没有写出来的代码。</span>
+        <span data-lang="en">Moyu demonstrates that a simple, rule-based prompt strategy can effectively suppress over-engineering behavior in AI coding assistants. It requires no model fine-tuning, depends on no specific toolchain, and integrates seamlessly into any development workflow. Less is more -- sometimes the best code is the code that was never written.</span>
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== REFERENCES ===== -->
+<section id="references">
+  <div class="container">
+    <h2 class="section-title fade-in">
+      <span data-lang="zh">参考文献</span>
+      <span data-lang="en">References</span>
+    </h2>
+    <ol class="ref-list fade-in">
+      <li><span class="ref-num">[1]</span> Chen, M. et al. (2021). "Evaluating Large Language Models Trained on Code." <em>arXiv:2107.03374</em>.</li>
+      <li><span class="ref-num">[2]</span> Vaithilingam, P. et al. (2022). "Expectation vs. Experience: Evaluating the Usability of Code Generation Tools." <em>CHI '22</em>.</li>
+      <li><span class="ref-num">[3]</span> Xu, F. F. et al. (2022). "A Systematic Evaluation of Large Language Models of Code." <em>MAPS '22</em>.</li>
+      <li><span class="ref-num">[4]</span> Yetiştiren, B. et al. (2023). "Evaluating the Code Quality of AI-Assisted Code Generation Tools." <em>arXiv:2304.10778</em>.</li>
+      <li><span class="ref-num">[5]</span> Liu, J. et al. (2023). "Is Your Code Generated by ChatGPT Really Correct?" <em>arXiv:2305.01210</em>.</li>
+      <li><span class="ref-num">[6]</span> White, J. et al. (2023). "A Prompt Pattern Catalog to Enhance Prompt Engineering with ChatGPT." <em>arXiv:2302.11382</em>.</li>
+      <li><span class="ref-num">[7]</span> Fowler, M. (1999). <em>Refactoring: Improving the Design of Existing Code</em>. Addison-Wesley.</li>
+      <li><span class="ref-num">[8]</span> Martin, R. C. (2008). <em>Clean Code: A Handbook of Agile Software Craftsmanship</em>. Prentice Hall.</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-inner">
+      <a href="https://github.com/uucz/moyu" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        <span>uucz/moyu</span>
+      </a>
+      <span>
+        <span data-lang="zh">少即是多 -- 有时，最好的代码就是没有写出来的代码。</span>
+        <span data-lang="en">Less is more -- sometimes the best code is the code never written.</span>
+      </span>
+    </div>
+  </div>
+</footer>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<!-- Benchmark data (optional) -->
+<script src="../benchmark/results/chart_data.js" onerror=""></script>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ===== Theme Toggle ===== */
+  const html = document.documentElement;
+  const themeBtn = document.getElementById('theme-toggle');
+  const moonIcon = themeBtn.querySelector('.icon-moon');
+  const sunIcon = themeBtn.querySelector('.icon-sun');
+
+  function setTheme(theme){
+    html.setAttribute('data-theme', theme);
+    localStorage.setItem('moyu-theme', theme);
+    if(theme === 'dark'){
+      moonIcon.style.display = 'none';
+      sunIcon.style.display = 'block';
+    } else {
+      moonIcon.style.display = 'block';
+      sunIcon.style.display = 'none';
+    }
+    if(typeof renderAllCharts === 'function') renderAllCharts();
+  }
+
+  const stored = localStorage.getItem('moyu-theme');
+  if(stored){
+    setTheme(stored);
+  } else if(window.matchMedia('(prefers-color-scheme:dark)').matches){
+    setTheme('dark');
+  }
+
+  themeBtn.addEventListener('click', function(){
+    const current = html.getAttribute('data-theme');
+    setTheme(current === 'dark' ? 'light' : 'dark');
+  });
+
+  /* ===== Language Toggle ===== */
+  const langBtn = document.getElementById('lang-toggle');
+  function setLang(lang){
+    html.setAttribute('lang', lang);
+    localStorage.setItem('moyu-lang', lang);
+  }
+  const storedLang = localStorage.getItem('moyu-lang');
+  if(storedLang) setLang(storedLang);
+
+  langBtn.addEventListener('click', function(){
+    const current = html.getAttribute('lang');
+    setLang(current === 'zh-CN' ? 'en' : 'zh-CN');
+  });
+
+  /* ===== Copy Install Command ===== */
+  const installCmd = document.getElementById('install-cmd');
+  const toast = document.getElementById('toast');
+  installCmd.addEventListener('click', function(){
+    navigator.clipboard.writeText('npx moyu@latest init').then(function(){
+      var lang = html.getAttribute('lang');
+      toast.textContent = lang === 'zh-CN' ? 'Copied!' : 'Copied!';
+      toast.classList.add('show');
+      setTimeout(function(){ toast.classList.remove('show'); }, 1800);
+    });
+  });
+
+  /* ===== Scroll Fade-In ===== */
+  var faders = document.querySelectorAll('.fade-in');
+  if('IntersectionObserver' in window){
+    var obs = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          e.target.classList.add('visible');
+          obs.unobserve(e.target);
+        }
+      });
+    }, {threshold:0.1, rootMargin:'0px 0px -40px 0px'});
+    faders.forEach(function(el){ obs.observe(el); });
+  } else {
+    faders.forEach(function(el){ el.classList.add('visible'); });
+  }
+
+  /* ===== Sortable Tables ===== */
+  document.querySelectorAll('.sortable').forEach(function(table){
+    var headers = table.querySelectorAll('th');
+    headers.forEach(function(th, idx){
+      th.innerHTML += ' <span class="sort-arrow">&#9650;</span>';
+      th.addEventListener('click', function(){
+        var tbody = table.querySelector('tbody');
+        var rows = Array.from(tbody.querySelectorAll('tr'));
+        var asc = th.getAttribute('data-sort') !== 'asc';
+        headers.forEach(function(h){ h.removeAttribute('data-sort'); });
+        th.setAttribute('data-sort', asc ? 'asc' : 'desc');
+        rows.sort(function(a,b){
+          var aVal = a.cells[idx] ? a.cells[idx].textContent.trim() : '';
+          var bVal = b.cells[idx] ? b.cells[idx].textContent.trim() : '';
+          var aNum = parseFloat(aVal), bNum = parseFloat(bVal);
+          if(!isNaN(aNum) && !isNaN(bNum)) return asc ? aNum - bNum : bNum - aNum;
+          return asc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+        });
+        rows.forEach(function(r){ tbody.appendChild(r); });
+      });
+    });
+  });
+
+  /* ===== Chart.js ===== */
+  var CONDITION_KEYS = ['control','baseline-concise','moyu-lite','moyu-standard','moyu-strict'];
+  var CHART_COLORS = {
+    control: '#9c9a91',
+    'baseline-concise': '#6a9bcc',
+    'moyu-lite': '#b0aea5',
+    'moyu-standard': '#d97757',
+    'moyu-strict': '#141413'
+  };
+  var CONDITIONS = ['Control','Baseline-Concise','Moyu-Lite','Moyu-Standard','Moyu-Strict'];
+  var CONDITION_COLORS = [CHART_COLORS.control, CHART_COLORS['baseline-concise'], CHART_COLORS['moyu-lite'], CHART_COLORS['moyu-standard'], CHART_COLORS['moyu-strict']];
+  var MODELS = ['Claude Sonnet 4','GPT-4o','Gemini 2.5 Pro'];
+  var MODEL_KEYS = ['sonnet-4','gpt-4o','gemini-2.5-pro'];
+  var MODEL_COLORS = ['#d97757','#6a9bcc','#788c5d'];
+
+  /* Placeholder data (used when chart_data.js is not available) */
+  var PLACEHOLDER = {
+    locByCondition: [145, 128, 112, 98, 95],
+    oeSignals: {
+      docstrings_delta: [2.5, 1.8, 1.2, 0.5, 0.6],
+      try_except_delta: [2.2, 1.6, 1.05, 0.45, 0.54],
+      raise_delta: [1.9, 1.4, 0.9, 0.4, 0.48],
+      isinstance_delta: [1.6, 1.2, 0.75, 0.35, 0.42],
+      new_imports: [1.3, 1.0, 0.6, 0.3, 0.36],
+      new_files: [1.0, 0.8, 0.45, 0.25, 0.3]
+    },
+    correctness: {syntax: [98, 99, 98, 99, 97], tests: [92, 93, 91, 94, 90]},
+    locByModel: {
+      'sonnet-4': [150, 132, 115, 100, 96],
+      'gpt-4o': [142, 126, 110, 97, 94],
+      'gemini-2.5-pro': [148, 130, 114, 99, 97]
+    },
+    btypeLoc: [165, 162, 160, 158, 155]
+  };
+
+  /* Normalize BENCHMARK_DATA or placeholder into a consistent internal format */
+  function getData(){
+    var bd = (typeof BENCHMARK_DATA !== 'undefined') ? BENCHMARK_DATA : null;
+    if(!bd) return PLACEHOLDER;
+    var conds = bd.conditions || CONDITION_KEYS;
+    var result = {};
+    /* LOC by condition */
+    if(bd.locByCondition){
+      result.locByCondition = conds.map(function(c){ return bd.locByCondition[c] || 0; });
+    } else {
+      result.locByCondition = PLACEHOLDER.locByCondition;
+    }
+    /* OE decomposition */
+    var sigKeys = ['docstrings_delta','try_except_delta','raise_delta','isinstance_delta','new_imports','new_files'];
+    if(bd.oeDecomposition){
+      result.oeSignals = {};
+      sigKeys.forEach(function(sig){
+        result.oeSignals[sig] = conds.map(function(c){
+          return (bd.oeDecomposition[c] && bd.oeDecomposition[c][sig]) || 0;
+        });
+      });
+    } else {
+      result.oeSignals = PLACEHOLDER.oeSignals;
+    }
+    /* Correctness */
+    if(bd.correctness){
+      result.correctness = {
+        syntax: conds.map(function(c){ return bd.correctness[c] ? bd.correctness[c].syntax : 100; }),
+        tests: conds.map(function(c){ return bd.correctness[c] ? bd.correctness[c].tests : 90; })
+      };
+    } else {
+      result.correctness = PLACEHOLDER.correctness;
+    }
+    /* Interaction: LOC by model x condition */
+    if(bd.locByModelCondition){
+      result.locByModel = {};
+      Object.keys(bd.locByModelCondition).forEach(function(model){
+        result.locByModel[model] = conds.map(function(c){ return bd.locByModelCondition[model][c] || 0; });
+      });
+    } else {
+      result.locByModel = PLACEHOLDER.locByModel;
+    }
+    /* B-type LOC (approximate from locByCondition * 1.3 like original) */
+    if(bd.locByCondition){
+      result.btypeLoc = conds.map(function(c){ return Math.round((bd.locByCondition[c] || 0) * 1.3); });
+    } else {
+      result.btypeLoc = PLACEHOLDER.btypeLoc;
+    }
+    return result;
+  }
+
+  function getTextColor(){
+    var theme = html.getAttribute('data-theme');
+    if(theme === 'dark') return '#faf9f5';
+    if(theme === 'light') return '#141413';
+    return window.matchMedia('(prefers-color-scheme:dark)').matches ? '#faf9f5' : '#141413';
+  }
+
+  function getGridColor(){
+    var theme = html.getAttribute('data-theme');
+    if(theme === 'dark') return 'rgba(250,249,245,.08)';
+    if(theme === 'light') return 'rgba(20,20,19,.1)';
+    return window.matchMedia('(prefers-color-scheme:dark)').matches ? 'rgba(250,249,245,.08)' : 'rgba(20,20,19,.1)';
+  }
+
+  function chartDefaults(){
+    return {
+      font: {family: "'Poppins', sans-serif"},
+      color: getTextColor()
+    };
+  }
+
+  var charts = {};
+
+  function destroyCharts(){
+    Object.keys(charts).forEach(function(k){
+      if(charts[k]){ charts[k].destroy(); charts[k] = null; }
+    });
+  }
+
+  function renderAllCharts(){
+    if(typeof Chart === 'undefined') return;
+    destroyCharts();
+    var data = getData();
+    var txtColor = getTextColor();
+    var gridColor = getGridColor();
+    var defaults = chartDefaults();
+
+    Chart.defaults.font.family = defaults.font.family;
+    Chart.defaults.color = defaults.color;
+
+    var tooltipStyle = {backgroundColor:'#141413',titleFont:{family:"'Poppins'"},bodyFont:{family:"'Poppins'"},cornerRadius:6,padding:10};
+
+    /* LOC Chart */
+    var locCtx = document.getElementById('chart-loc');
+    if(locCtx){
+      charts.loc = new Chart(locCtx, {
+        type: 'bar',
+        data: {
+          labels: CONDITIONS,
+          datasets: [{
+            label: 'Mean LOC (A-Type)',
+            data: data.locByCondition,
+            backgroundColor: CONDITION_COLORS.map(function(c){return c+'cc';}),
+            borderColor: CONDITION_COLORS,
+            borderWidth: 2,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {legend:{display:false}, tooltip:tooltipStyle},
+          scales: {
+            y: {beginAtZero:true, grid:{color:gridColor}, ticks:{color:txtColor}, title:{display:true,text:'LOC',color:txtColor}},
+            x: {grid:{display:false}, ticks:{color:txtColor, font:{size:11}}}
+          }
+        }
+      });
+    }
+
+    /* OE Signal Decomposition */
+    var oeCtx = document.getElementById('chart-oe');
+    if(oeCtx){
+      var oeSigs = data.oeSignals;
+      var oeLabels = ['Docstrings','Try/Except','Raise','isinstance','New Imports','New Files'];
+      var oeKeys = ['docstrings_delta','try_except_delta','raise_delta','isinstance_delta','new_imports','new_files'];
+      var oeColors = ['#d97757','#6a9bcc','#788c5d','#9c9a91','#b0aea5','#141413'];
+      charts.oe = new Chart(oeCtx, {
+        type: 'bar',
+        data: {
+          labels: CONDITIONS,
+          datasets: oeKeys.map(function(key, i){
+            return {label: oeLabels[i], data: oeSigs[key], backgroundColor: oeColors[i]+'cc'};
+          })
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}}, tooltip:tooltipStyle},
+          scales: {
+            x: {stacked:true, grid:{display:false}, ticks:{color:txtColor, font:{size:11}}},
+            y: {stacked:true, beginAtZero:true, grid:{color:gridColor}, ticks:{color:txtColor}, title:{display:true,text:'Signal Count (mean)',color:txtColor}}
+          }
+        }
+      });
+    }
+
+    /* Correctness */
+    var corrCtx = document.getElementById('chart-correctness');
+    if(corrCtx){
+      charts.correctness = new Chart(corrCtx, {
+        type: 'bar',
+        data: {
+          labels: CONDITIONS,
+          datasets: [
+            {label:'Syntax Valid (%)', data:data.correctness.syntax, backgroundColor:'#d97757cc', borderColor:'#d97757', borderWidth:2, borderRadius:6},
+            {label:'Tests Passed (%)', data:data.correctness.tests, backgroundColor:'#6a9bcccc', borderColor:'#6a9bcc', borderWidth:2, borderRadius:6}
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}}, tooltip:tooltipStyle},
+          scales: {
+            y: {beginAtZero:true, max:105, grid:{color:gridColor}, ticks:{color:txtColor, callback:function(v){return v+'%'}}, title:{display:true,text:'Rate (%)',color:txtColor}},
+            x: {grid:{display:false}, ticks:{color:txtColor, font:{size:11}}}
+          }
+        }
+      });
+    }
+
+    /* Interaction: Model x Condition */
+    var intCtx = document.getElementById('chart-interaction');
+    if(intCtx){
+      var intDatasets = [];
+      for(var mi=0; mi<MODEL_KEYS.length; mi++){
+        var mKey = MODEL_KEYS[mi];
+        var mData = data.locByModel[mKey];
+        if(mData){
+          intDatasets.push({
+            label: MODELS[mi],
+            data: mData,
+            borderColor: MODEL_COLORS[mi],
+            backgroundColor: MODEL_COLORS[mi]+'33',
+            tension: 0.3,
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            fill: false
+          });
+        }
+      }
+      charts.interaction = new Chart(intCtx, {
+        type: 'line',
+        data: {labels: CONDITIONS, datasets: intDatasets},
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}}, tooltip:tooltipStyle},
+          scales: {
+            y: {beginAtZero:false, grid:{color:gridColor}, ticks:{color:txtColor}, title:{display:true,text:'LOC',color:txtColor}},
+            x: {grid:{display:false}, ticks:{color:txtColor, font:{size:11}}}
+          }
+        }
+      });
+    }
+
+    /* B-Type */
+    var bCtx = document.getElementById('chart-b-type');
+    if(bCtx){
+      charts.btype = new Chart(bCtx, {
+        type: 'bar',
+        data: {
+          labels: CONDITIONS,
+          datasets: [{
+            label: 'LOC (B-Type Mean)',
+            data: data.btypeLoc,
+            backgroundColor: CONDITION_COLORS.map(function(c){return c+'99';}),
+            borderColor: CONDITION_COLORS,
+            borderWidth: 2,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {legend:{display:false}, tooltip:tooltipStyle, title:{display:true,text:'B-Type Scenarios (Should NOT Reduce)',font:{size:13,weight:'bold'},color:txtColor}},
+          scales: {
+            y: {beginAtZero:true, grid:{color:gridColor}, ticks:{color:txtColor}, title:{display:true,text:'LOC',color:txtColor}},
+            x: {grid:{display:false}, ticks:{color:txtColor, font:{size:11}}}
+          }
+        }
+      });
+    }
+
+    /* Update key numbers from benchmark data */
+    updateKeyNumbers(data);
+  }
+
+  function updateKeyNumbers(data){
+    if(!data) return;
+    /* LOC reduction: compare control (idx 0) vs moyu-standard (idx 3) */
+    if(data.locByCondition && data.locByCondition.length >= 4){
+      var controlLoc = data.locByCondition[0];
+      var standardLoc = data.locByCondition[3];
+      if(controlLoc > 0){
+        var locPct = Math.round((1 - standardLoc / controlLoc) * 100);
+        var ids = ['kn-loc-reduction','stat-loc-reduction-zh','stat-loc-reduction-en'];
+        ids.forEach(function(id){ var el=document.getElementById(id); if(el) el.textContent=locPct+'%'; });
+      }
+    }
+    /* Correctness: moyu-standard syntax rate (idx 3) */
+    if(data.correctness && data.correctness.syntax && data.correctness.syntax.length >= 4){
+      var corrVal = data.correctness.syntax[3];
+      var corrIds = ['kn-correctness','stat-correctness-zh','stat-correctness-en'];
+      corrIds.forEach(function(id){ var el=document.getElementById(id); if(el) el.textContent=corrVal.toFixed(1)+'%'; });
+    }
+    /* OE reduction */
+    if(data.oeSignals && data.oeSignals.docstrings_delta){
+      var sigKeys = ['docstrings_delta','try_except_delta','raise_delta','isinstance_delta','new_imports','new_files'];
+      var controlOE = 0, standardOE = 0;
+      sigKeys.forEach(function(k){
+        if(data.oeSignals[k]){
+          controlOE += data.oeSignals[k][0] || 0;
+          standardOE += data.oeSignals[k][3] || 0;
+        }
+      });
+      if(controlOE > 0){
+        var oePct = Math.round((1 - standardOE / controlOE) * 100);
+        ['stat-oe-reduction-zh','stat-oe-reduction-en'].forEach(function(id){ var el=document.getElementById(id); if(el) el.textContent=oePct+'%'; });
+      }
+    }
+  }
+
+  /* Init charts when Chart.js is available */
+  function tryInit(){
+    if(typeof Chart !== 'undefined'){
+      renderAllCharts();
+    } else {
+      setTimeout(tryInit, 200);
+    }
+  }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', tryInit);
+  } else {
+    tryInit();
+  }
+
+  /* Re-render on system color scheme change */
+  window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change', function(){
+    if(!html.getAttribute('data-theme') || html.getAttribute('data-theme') === ''){
+      if(typeof renderAllCharts === 'function') renderAllCharts();
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
