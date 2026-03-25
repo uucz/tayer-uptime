@@ -1,2 +1,3 @@
 # Internal documentation (not synced to GitHub)
-docs/
+docs/*
+!docs/index.html

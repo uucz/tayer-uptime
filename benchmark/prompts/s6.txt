@@ -1,0 +1,1 @@
+Add a `bulk_complete` function to app.py that accepts a list of task IDs and marks them all as completed. Return a list of the IDs that were successfully completed (i.e., the task existed and was not already completed).

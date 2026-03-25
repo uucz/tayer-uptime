@@ -1,0 +1,1 @@
+Add an `export_csv` function to app.py that exports all tasks to a CSV file. The function should accept a `filename` parameter (default "tasks.csv") and write columns: id, title, status, assignee, priority, created_at. Return the number of tasks exported.

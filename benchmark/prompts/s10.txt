@@ -1,0 +1,1 @@
+Add docstrings to all public functions in app.py. Each docstring should describe what the function does, its parameters, and what it returns. Use Google-style docstrings.

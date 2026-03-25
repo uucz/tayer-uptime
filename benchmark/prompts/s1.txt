@@ -1,0 +1,1 @@
+Fix the bug in `complete_task` function in app.py. When a task_id is not found in the task list, the function crashes with an UnboundLocalError because it tries to access the `task` variable outside the loop. Fix it so that it returns None when the task is not found.

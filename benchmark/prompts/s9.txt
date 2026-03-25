@@ -1,0 +1,1 @@
+Refactor the `load_tasks` and `save_tasks` functions in app.py to use Python context managers (with statements) instead of manually opening and closing files. This ensures files are properly closed even if an exception occurs.

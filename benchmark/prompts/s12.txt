@@ -1,0 +1,1 @@
+Do two things: (1) Fix the bug in `complete_task` where it crashes with UnboundLocalError when the task ID is not found — it should return None instead. (2) Add a `bulk_complete` function that accepts a list of task IDs and marks them all as completed, returning a list of successfully completed IDs.

@@ -1,0 +1,1 @@
+Write unit tests for the `add_task`, `complete_task`, and `delete_task` functions in app.py. Use pytest. Tests should cover: adding a task successfully, completing an existing task, completing a non-existent task (should return None), deleting an existing task, and deleting a non-existent task. Use a temporary file for the data file so tests don't affect real data.
