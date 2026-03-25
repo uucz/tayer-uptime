@@ -1,1 +1,0 @@
-Add a `status` parameter to the `search` function in app.py. When provided, search results should be filtered to only include tasks matching that status. When not provided, behavior should be the same as before (return all matching tasks regardless of status).

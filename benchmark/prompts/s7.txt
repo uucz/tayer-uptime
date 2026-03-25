@@ -1,1 +1,0 @@
-Fix the `delete_task` function in app.py. Currently it doesn't return anything. Fix it so that it returns True if a task was actually deleted, and False if no task with that ID was found.

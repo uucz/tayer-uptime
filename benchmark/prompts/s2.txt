@@ -1,1 +1,0 @@
-Add a `list_tasks_sorted` function to app.py that returns tasks sorted by priority (high first, then medium, then low). It should accept an optional `status` parameter to filter by status before sorting.
